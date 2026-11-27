@@ -668,7 +668,7 @@ async function buildRecipe(exampleMode = false) {
     } finally { reader.cancel().catch(() => {}); }
     if (!receivedRecipe) throw new Error("The connection ended before a recipe arrived. Please try again.");
     terminalState.textContent = "Complete";
-    setStatus(exampleMode ? "Prewritten example ready with live catalog details. Edit calls and runs to explore costs." : recipe.steps.length ? "Recipe ready. Review and edit each tool before using it." : "Answer the open questions to complete the recipe.", "success");
+    setStatus(exampleMode ? "Prewritten example ready with live catalog details. Edit calls and runs to explore costs." : recipe.mode === "catalog" && recipe.steps.length ? "Catalog-only draft ready. Review the inputs and adjust the quantities." : recipe.steps.length ? "Recipe ready. Review and edit each tool before using it." : "Answer the open questions to complete the recipe.", "success");
     setRecipeStatus("Review and edit each tool before using it.", "success");
     recipePanel.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
   } catch (error) {
@@ -687,9 +687,7 @@ async function buildRecipe(exampleMode = false) {
       recipePanel.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
     } else {
       if (recipe) setRecipeStatus(receivedRecipe ? "The connection stopped after this recipe arrived. Review it before use." : "Your previous recipe is still available to edit.");
-      setStatus(error.status === 503 || error.status === 429 ? (error.message || "Recipe generation is temporarily paused. You can try the example or copy the skill.") :
-        error.status === 400 ? error.message :
-        `${message || "The catalog or recipe planner is unavailable."} You can still try the example or copy the skill.`, "error");
+      setStatus(message || "The catalog or recipe planner is unavailable.", "error");
     }
   } finally {
     clearTimeout(timeout);
