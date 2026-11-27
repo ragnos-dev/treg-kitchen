@@ -695,3 +695,142 @@ h1 {
     z-index: 1;
   }
 }
+
+/* Keep the route and the selected step together on a single recipe sheet. */
+.graph-workspace {
+  margin: 0 clamp(12px, 2.5vw, 30px) 24px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  background: var(--surface);
+}
+.graph-map {
+  border-radius: 12px 0 0 12px;
+  background-color: #faf8f2;
+  background-image: radial-gradient(#d2ccbd 0.8px, transparent 0.8px);
+  background-size: 13px 13px;
+  padding: 22px clamp(12px, 2vw, 25px);
+}
+.graph-flow { align-items: stretch; }
+.graph-terminal {
+  align-self: flex-start;
+  margin-left: 5px;
+  padding: 4px 11px;
+  background: #faf8f2;
+}
+.graph-row { align-items: stretch; }
+.graph-node, .graph-decision {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px 9px 6px;
+  background: #fffefa;
+  border: 1px solid #cfc9bd;
+  color: var(--ink);
+  border-radius: 11px;
+}
+.graph-node:hover, .graph-node.trace-end {
+  transform: none;
+  border-color: #b45b47;
+  box-shadow: 0 1px 6px #583e2412;
+}
+.graph-node[aria-pressed="true"] {
+  border-color: #a64030;
+  box-shadow: 0 0 0 1px #a64030;
+}
+.node-mark {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: var(--role-text);
+  background: var(--role-fill);
+  border-radius: 9px;
+  font: 600 19px/1 var(--mono);
+}
+.node-mark:has(img) { background: #f6f5ef; }
+.node-mark img { width: 23px; height: 23px; object-fit: contain; }
+.node-copy { min-width: 0; }
+.node-type { color: var(--muted); font: 10px/1.4 var(--mono); margin: 0 0 2px; }
+.graph-decision .node-type::before { display: none; }
+.node-title { font: 600 14px/1.35 var(--sans); overflow-wrap: anywhere; }
+.graph-branch { display: block; align-self: flex-end; background: transparent; border: 0; padding: 0; margin: 0; }
+.branch-view { min-height: 26px; color: var(--muted); font-size: 11px; }
+.graph-connection { min-height: 44px; gap: 2px; }
+.graph-connection::after { display: none; }
+.handoff-trigger {
+  display: flex;
+  align-items: center;
+  position: relative;
+  align-self: stretch;
+  flex: 1;
+  min-width: 0;
+  min-height: 46px;
+  padding: 0 0 0 52px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  text-align: left;
+  color: #918779;
+  cursor: pointer;
+}
+.handoff-trigger:focus-visible { outline: 2px solid #a64030; }
+.handoff-beam { left: 6px; width: 36px; }
+.handoff-label {
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  font-size: 11px;
+  color: #675e52;
+}
+.tracing { z-index: 3; }
+.tracing .handoff-trigger { color: #b53c2c; }
+.tracing .handoff-label { color: #8d3829; }
+.handoff-preview {
+  position: absolute;
+  left: min(42px, 11%);
+  right: 0;
+  bottom: calc(100% - 2px);
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #302d27;
+  color: #fffaf0;
+  box-shadow: 0 4px 12px #29221927;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+.handoff-from, .handoff-to, .handoff-input { display: block; }
+.handoff-from { font: 10px/1.5 var(--mono); color: #e5c3a6; }
+.handoff-to { margin: 3px 0; font: 600 14px/1.35 var(--sans); }
+.handoff-input { font: 12px/1.45 var(--sans); }
+.connection-add { min-width: 32px; min-height: 32px; font-size: 16px; }
+.step-inspector { border-radius: 0 12px 12px 0; }
+@media (max-width: 700px) {
+  .graph-workspace { grid-template-columns: minmax(0, 1fr); }
+  .graph-map { border-radius: 12px 12px 0 0; }
+  .step-inspector { border-radius: 0 0 12px 12px; }
+}
+
+.inspector-nav { display: flex; align-items: center; justify-content: space-between; }
+#back-to-path { display: none; }
+.handoff-input + .handoff-input { margin-top: 4px; }
+.node-mark { white-space: nowrap; }
+.graph-node { width: fit-content; max-width: 100%; padding-right: 16px; }
+.graph-row:has(.graph-branch) { position: relative; }
+.graph-row:has(.graph-branch)::after {
+  content: "";
+  position: absolute;
+  left: 24px;
+  bottom: 0;
+  height: 26px;
+  border-left: 1px solid #a59c8f;
+}
+@media (max-width: 700px) {
+  #back-to-path { display: block; padding: 4px 16px; font-size: 12px; min-height: 36px; }
+}
