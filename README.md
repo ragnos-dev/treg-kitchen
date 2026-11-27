@@ -1,12 +1,30 @@
 # treg-kitchen
 
-Describe a job and the inputs you already have. treg-kitchen drafts an editable recipe from the live Treg catalog with an explanation for each tool choice.
+Describe a job, answer two questions and edit the proposed path. The sous-chef starts with the live Treg catalog and can include a future read-only Gmail step, a qualification skill and human review. The site generates instructions you can hand to your coding agent. Mailbox connections and recipe execution happen in that agent. Each handoff shows what the next step needs. Read the human TL;DR, inspect the path, and use **Copy for my agent** for the full instructions.
 
 [Open treg-kitchen](https://treg-kitchen.ragnos.io)
 
 ## Use the skill
 
 Paste the full contents of [SKILL.md](SKILL.md) into an agent with public web access, or install it as a skill in your agent's supported format. The demo’s **Copy skill** button copies the same file. Use a generic description when searching the public catalog.
+
+## Run headlessly or in a coding agent
+
+Clone this repository and install with `npm ci` on Node 22. Run the same planner locally:
+
+```sh
+node bin/treg-kitchen.js --source both --audience "Independent studio owners" --people 20 --runs 2 "Find warm contacts to reconnect with"
+```
+
+The human TL;DR and agent handoff go to stdout as Markdown. Use `--format json` for another program, or pass a JSON planning request through `--stdin`. A Gmail-only plan works offline. Catalog paths use public metadata reads. Planning in the CLI requires no model credentials and never opens your mailbox. The exported handoff identifies the connections the executing agent needs. See the [Gmail step guide](docs/gmail.md) for the scope of a historical-contact search.
+
+The MIT-licensed methods used by the app are in this repository:
+
+| Skill | What it does |
+| --- | --- |
+| [treg-kitchen](SKILL.md) | Clarifies the goal, matches sources, checks handoffs and estimates run cost. Copy this file inline or install it in your coding agent. |
+| [qualify-warm-contacts](skills/qualify-warm-contacts/SKILL.md) | Separates evidence of an existing relationship from evidence of buyer fit. |
+| [draw-recipe-path](skills/draw-recipe-path/SKILL.md) | Draws typed steps, labeled handoffs, conditional provider routes and missing inputs. |
 
 ## Run the page locally
 
