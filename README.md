@@ -1,6 +1,10 @@
 # treg-kitchen
 
-Describe a job, answer two questions and edit the proposed path. The sous-chef starts with Treg’s live catalog. The warm-contact recipe demonstrates how a Treg endpoint can work alongside Gmail, a local skill and human review. The site generates instructions you can hand to your coding agent. Mailbox connections and recipe execution happen in that agent. Hover, focus or tap a connection to trace what one step passes to the next. A single beam follows the connection, or a static highlight appears with reduced motion. Select a node to see its purpose, inputs, output and available price. Choose **Edit step** to adjust the instructions or switch tools. Read the human TL;DR, inspect the path, and use **Copy for my agent** for the full instructions.
+Describe what you want to make, the inputs you already have and any custom tools or skills your agent can use. Treg Kitchen builds an editable recipe with a human TL;DR, a cost estimate and instructions to copy into your agent. The website reads tool descriptions. Your files, accounts and tools stay in your own environment.
+
+[Check a company claim](https://treg-kitchen.ragnos.io/?example=company-claim) · [Turn recordings into a brief](https://treg-kitchen.ragnos.io/?example=recordings-brief) · [Find warm contacts](https://treg-kitchen.ragnos.io/?example=warm-contacts)
+
+Select a node for its rationale, inputs, outputs and source. Trace a connection to inspect the handoff. Use **Edit step** to revise the plan. **Add step** accepts a custom declaration or an exact public Treg endpoint ID. **Copy for my agent** copies the current instructions.
 
 [Open treg-kitchen](https://treg-kitchen.ragnos.io) · [Product requirements and current coverage](PRD.md)
 
@@ -13,7 +17,11 @@ Paste the full contents of [SKILL.md](SKILL.md) into an agent with public web ac
 Clone this repository and install with `npm ci` on Node 22. Run the same planner locally:
 
 ```sh
-node bin/treg-kitchen.js --source both --audience "Independent studio owners" --people 20 --runs 2 "Find warm contacts to reconnect with"
+node bin/treg-kitchen.js --inputs "Company page URL: https://example.org/" "Check the claim that this domain is intended for documentation examples"
+
+node bin/treg-kitchen.js --inputs "Two local recordings and our team template" \
+  --resource '{"kind":"tool","name":"Team transcriber","input":"Recording file","output":"Timestamped transcript","source":"tools/transcriber.md"}' \
+  "Turn the recordings into a brief using the team template"
 ```
 
 The human TL;DR and agent handoff go to stdout as Markdown. Use `--format json` for another program, or pass a JSON planning request through `--stdin`. A Gmail-only plan works offline. Catalog paths use public metadata reads. Planning in the CLI requires no model credentials and never opens your mailbox. The exported handoff identifies the connections the executing agent needs. See the [Gmail step guide](docs/gmail.md) for the scope of a historical-contact search.
@@ -24,17 +32,23 @@ The MIT-licensed methods used by the app are in this repository:
 | --- | --- |
 | [treg-kitchen](SKILL.md) | Clarifies the goal, matches sources, checks handoffs and estimates run cost. Copy this file inline or install it in your coding agent. |
 | [qualify-warm-contacts](skills/qualify-warm-contacts/SKILL.md) | Separates evidence of an existing relationship from evidence of buyer fit. |
+| [check-source-evidence](skills/check-source-evidence/SKILL.md) | Grounds a claim in a specific passage or reports missing support. |
+| [write-template-brief](skills/write-template-brief/SKILL.md) | Turns transcripts into a brief against the supplied template, with source references. |
 | [draw-recipe-path](skills/draw-recipe-path/SKILL.md) | Draws typed steps, labeled handoffs, conditional provider routes and missing inputs. |
 
 ## Run the page locally
 
 Use Node.js 22. Run `npm ci`, then `npm run dev`. Open the printed local URL to edit the example or copy the standalone skill. Run `npm test` for the planner and spending limits. The concurrency test uses Redis if `redis-server` and `redis-cli` are installed.
 
-## Enable recipe generation
+## How the cookbook plans
 
-The Kitchen terminal streams the search phrases sent to Treg and the endpoint IDs opened for inspection. **Try an example** checks a prewritten recipe against the public catalog without a model call. Adjust calls per step and recipe runs to see estimated tool costs. The Markdown export includes the same quantities and pricing assumptions. A missing price stays unknown. Routed prices may be lower bounds.
+The browser and default CLI use the cookbook planner. The same submit path handles typed requests and examples. Each custom resource declares its name, kind, expected input, expected output and an optional source reference. Paths and URLs supplied here are text for the future agent. The server does not fetch them or look for credentials.
 
-When model funding is unavailable before planning starts, **Build a recipe** uses a catalog-only draft. It extracts generic capability terms locally, searches Treg and inspects the returned tools. A broad lead-generation request produces a buyer-profile, prospect-search and qualification recipe. If the request lacks searchable terms, the editor asks for a more specific input and outcome.
+The planner can use packaged methods, match unfamiliar declared tools and skills by their contracts, and inspect public Treg catalog candidates. A known URL can skip company discovery. A local transcriber or an existing transcript changes the recording recipe. If inputs or compatible tools are missing, the recipe includes the outstanding dependency for the user to resolve. Estimates distinguish published Treg prices from unpriced local or account-dependent work.
+
+Send a JSON POST to `/api/recipe` with `{ "useCase": "...", "brief": { "source": "cookbook", "inputs": "...", "resources": [] } }`. Use `Accept: application/x-ndjson` for the planning log. The normal cookbook flow requires no model key. The older request formats remain supported.
+
+## Optional model-backed API
 
 For direct OpenAI generation, configure a dedicated project key and pin its organization and project IDs on the server with the variables in [.env.example](.env.example). The planner uses the standard processing tier of `gpt-4.1-nano-2025-04-14`. Each request reserves $0.027 before either of its two bounded completions. The shared ledger enforces **$10 lifetime** and **$1 per UTC day**. Unused portions of reservations stay counted, including after failures. These ceilings cover planning. The estimated recipe costs describe what a separate run of the selected catalog tools could cost.
 
@@ -44,7 +58,7 @@ For a Redis deployment, choose `KITCHEN_BUDGET_STORE=redis` and supply its REST 
 
 The original Vercel AI Gateway option remains available by configuring `KITCHEN_MODEL_PROVIDER=gateway` on a team with verified included credits, auto-reload disabled and the Gemini Flash Lite model available. Set `KITCHEN_FREE_CREDITS_VERIFIED=1` and configure the same spending ledger.
 
-The app sends the use case to the selected planning model and short, generic searches to Treg. `POST /api/recipe` accepts `{"useCase":"..."}` or `{"example":true}`. JSON is the default response. Send `Accept: application/x-ndjson` to receive progress events followed by a recipe or an error. All catalog operations are public reads.
+The optional model-backed request sends the use case to the selected planning model and short, generic searches to Treg. `POST /api/recipe` accepts `{"useCase":"..."}` or `{"example":true}`. JSON is the default response. Send `Accept: application/x-ndjson` to receive progress events followed by a recipe or an error. All catalog operations are public reads.
 
 MIT licensed. An independent tool built on Treg's public catalog.
 

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#f6f2e9">
-<meta name="description" content="Describe a job and get an editable plan from Treg's live tool catalog.">
+<meta name="description" content="Describe a job and get an editable plan with tools from Treg and resources you already use.">
 <title>treg-kitchen · A recipe for the right tools</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -74,7 +74,6 @@ textarea::placeholder { color: #8b857a; }
 }
 .primary:hover { background: var(--tomato-dark); transform: translateY(-1px); box-shadow: 0 5px 13px #65221520; }
 .primary:disabled { cursor: progress; opacity: .74; transform: none; }
-.example-link { margin-left: auto; }
 .status { margin: 14px 0 0; min-height: 23px; color: var(--muted); font-size: 13px; line-height: 1.55; }
 .status.error { color: #922c1e; }
 .status.success { color: #486342; }
@@ -157,7 +156,6 @@ dialog::backdrop { background: #29272166; }
   textarea { min-height: 129px; }
   .actions { gap: 8px 17px; }
   .actions .primary { width: 100%; }
-  .example-link { margin-left: 0; }
   .still-life { top: auto; bottom: 10px; width: 112px; opacity: .18; }
   .recipe { margin-top: 29px; border-radius: 12px; }
   .recipe-head { padding: 21px 19px 16px; flex-direction: column; align-items: stretch; gap: 14px; }
@@ -207,20 +205,28 @@ dialog::backdrop { background: #29272166; }
   <form class="compose" id="recipe-form" aria-label="Recipe brief">
     <label class="field-label" for="use-case">What are we making?</label>
     <textarea id="use-case" name="useCase" required maxlength="1200" placeholder="I have a company website and a claim. Help me find the evidence and write a short brief."></textarea>
-    <div class="brief-grid" id="brief-questions" hidden>
-      <div><label class="field-label" for="brief-audience">Who is it for, and what do you have?</label><input class="brief-input" id="brief-audience" name="audience" maxlength="500" placeholder="e.g. NYC founders; I have names and company URLs"></div>
-      <fieldset class="source-picker"><legend class="field-label">Where should we start?</legend><div class="source-options">
-        <label class="source-option"><input name="source" type="radio" value="treg" checked><span>Treg catalog</span></label>
-        <label class="source-option"><input name="source" type="radio" value="gmail"><span>Gmail history</span></label>
-        <label class="source-option"><input name="source" type="radio" value="both"><span>Both</span></label>
-      </div></fieldset>
+    <div class="brief-grid" id="brief-questions">
+      <div>
+        <label class="field-label" for="brief-inputs">What inputs or assets do you have? <span class="field-optional">Optional</span></label>
+        <textarea class="brief-input" id="brief-inputs" name="inputs" rows="2" maxlength="1200" aria-describedby="brief-note" placeholder="e.g. A company URL, two recordings or a team template"></textarea>
+      </div>
+      <fieldset class="brief-resources">
+        <legend class="field-label">Any tools or skills to use? <span class="field-optional">Optional</span></legend>
+        <div id="brief-resources" class="resource-list"></div>
+        <button class="outline" id="add-resource" type="button">Add a tool or skill</button>
+      </fieldset>
     </div>
-    <p class="brief-note" id="brief-source-note" hidden>Choose the sources your agent should use later. This page plans the work; your coding agent connects accounts and runs it.</p>
+    <p class="brief-note" id="brief-note">Describe what you have. Keep private files and account access in the agent that runs the recipe.</p>
     <div class="actions">
       <button class="primary" id="build-button" type="submit">Build a recipe</button>
       <button class="text-button" id="copy-skill" type="button">Copy skill</button>
-      <button class="text-button example-link" id="try-example" type="button">Try a warm-leads recipe</button>
       <span class="starting-cost">Planning starts at $0. Tool runs are estimated separately.</span>
+    </div>
+    <div class="example-options" role="group" aria-label="Example recipes">
+      <span>Try an example</span>
+      <button class="outline" type="button" data-example="company-claim">Check a company claim</button>
+      <button class="outline" type="button" data-example="recordings-brief">Turn recordings into a brief</button>
+      <button class="outline" type="button" data-example="warm-contacts">Find warm contacts</button>
     </div>
     <p class="status" id="status" role="status" aria-live="polite" aria-atomic="true"></p>
   </form>
@@ -250,19 +256,53 @@ dialog::backdrop { background: #29272166; }
     <div class="cost-summary" aria-label="Estimated tool costs">
       <div><span class="detail-label">Per recipe run</span><output class="cost-value" id="cost-per-run"></output></div>
       <div><span class="detail-label" id="volume-cost-label">At your volume</span><output class="cost-value" id="cost-at-volume"></output></div>
-      <label class="volume-control" for="people-per-run"><span class="detail-label">People per run</span><input class="quantity-input" id="people-per-run" type="number" min="1" max="1000000" step="1" value="1" inputmode="numeric"></label>
+      <label class="volume-control" for="people-per-run"><span class="detail-label" id="items-per-run-label">Items per run</span><input class="quantity-input" id="people-per-run" type="number" min="1" max="1000000" step="1" value="1" inputmode="numeric"></label>
       <label class="volume-control" for="recipe-volume"><span class="detail-label">Recipe runs</span><input class="quantity-input" id="recipe-volume" type="number" min="1" max="1000000" step="1" value="1" inputmode="numeric"></label>
       <p class="cost-note" id="cost-note"></p>
     </div>
     </details>
     <details class="agent-preview" id="agent-preview"><summary>Preview agent instructions</summary><pre id="agent-instructions"></pre></details>
-    <section class="insert-menu" id="insert-menu" aria-labelledby="insert-title" hidden><h3 id="insert-title" tabindex="-1">Add a step</h3><p id="insert-context"></p><div class="insert-options"><button class="outline" type="button" data-addition="verify-email">Verify an email</button><button class="outline" type="button" data-addition="find-email">Find an email</button><button class="outline" type="button" data-addition="human">Human decision</button><button class="text-button" type="button" id="cancel-insert">Cancel</button></div><p id="insert-status" role="status"></p></section>
+    <section class="insert-menu" id="insert-menu" aria-labelledby="insert-title" hidden>
+      <h3 id="insert-title" tabindex="-1">Add a step</h3>
+      <p id="insert-context"></p>
+      <div class="insert-options">
+        <button class="outline" type="button" id="choose-catalog" aria-controls="insert-catalog" aria-expanded="false">Treg endpoint</button>
+        <button class="outline" type="button" id="insert-custom" aria-expanded="false" aria-controls="insert-resource-form">Custom tool or skill</button>
+        <button class="outline" type="button" data-addition="human">Human decision</button>
+        <button class="outline" type="button" data-addition="verify-email">Verify an email</button>
+        <button class="outline" type="button" data-addition="find-email">Find an email</button>
+        <button class="text-button" type="button" id="cancel-insert">Cancel</button>
+      </div>
+      <form id="insert-catalog" hidden>
+        <label for="catalog-id" class="field-label">Catalog endpoint ID</label>
+        <input id="catalog-id" class="brief-input" placeholder="treg.web.extract" maxlength="160" required>
+        <button class="outline" type="submit" data-addition="catalog-tool">Inspect and add</button>
+      </form>
+      <form id="insert-resource-form" hidden>
+        <div id="insert-resource"></div>
+        <button class="primary" type="submit">Insert step</button>
+      </form>
+      <p id="insert-status" role="status"></p>
+    </section>
     <div class="gaps" id="gaps" hidden>
       <h3>Open questions</h3>
       <ul id="gap-list"></ul>
     </div>
   </section>
 </main>
+<template id="resource-fields">
+  <fieldset class="resource-row">
+    <legend>Custom resource</legend>
+    <div class="resource-fields">
+      <label>Type<select name="kind" class="brief-input"><option value="tool">Tool</option><option value="skill">Skill</option></select></label>
+      <label>Name<input name="name" class="brief-input" required maxlength="80" placeholder="e.g. Local transcription"></label>
+      <label>Input<input name="input" class="brief-input" required maxlength="400" placeholder="e.g. Recording file"></label>
+      <label>Output<input name="output" class="brief-input" required maxlength="400" placeholder="e.g. Transcript"></label>
+      <label class="resource-source">Source or path <span class="field-optional">Optional</span><input name="source" class="brief-input" maxlength="400" placeholder="e.g. tools/transcription.md"></label>
+    </div>
+    <button class="text-button remove-resource" type="button">Remove resource</button>
+  </fieldset>
+</template>
 <dialog class="copy-dialog" id="copy-dialog" aria-labelledby="copy-dialog-title">
   <h2 class="copy-dialog-title" id="copy-dialog-title">Copy the text</h2>
   <p class="status" id="copy-dialog-help">The text is selected. Copy it, then close this window.</p>
@@ -273,6 +313,7 @@ dialog::backdrop { background: #29272166; }
 import { recipeMarkdown, recipeTldr, estimateStepCost, estimateRecipeCost } from "/recipe-format.js";
 
 import { createRecipeGraph } from "/recipe-path.js";
+import { dependencyGaps } from "/handoffs.js";
 
 const form = document.querySelector("#recipe-form");
 const useCaseField = document.querySelector("#use-case");
@@ -294,9 +335,160 @@ const terminalLines = document.querySelector("#terminal-lines");
 const terminalState = document.querySelector("#terminal-state");
 const volumeInput = document.querySelector("#recipe-volume");
 const peopleInput = document.querySelector("#people-per-run");
-const audienceField = document.querySelector("#brief-audience");
+const inputsField = document.querySelector("#brief-inputs");
+const resourceTemplate = document.querySelector("#resource-fields");
+const resourceList = document.querySelector("#brief-resources");
+const addResourceButton = document.querySelector("#add-resource");
+const exampleButtons = document.querySelectorAll("[data-example]");
+const insertPanel = document.querySelector("#insert-menu");
+const insertCustomButton = document.querySelector("#insert-custom");
+const insertResourceForm = document.querySelector("#insert-resource-form");
+const insertResource = document.querySelector("#insert-resource");
+const insertStatus = document.querySelector("#insert-status");
+const maxResources = 8;
+const examples = {
+  "company-claim": {
+    useCase: "Check the claim that Example Domain is intended for documentation examples. Give me a short verdict with supporting evidence from the supplied company page.",
+    inputs: "Company page URL: https://example.org/",
+  },
+  "recordings-brief": {
+    useCase: "Turn two meeting recordings into a brief using my team's template. Flag any unclear decisions or action items for review.",
+    inputs: "Two local meeting recordings and the team template at brief-template.md.",
+    resources: [{kind: "tool", name: "Local Whisper transcription", input: "Recording file", output: "Timestamped transcript", source: "https://github.com/openai/whisper"}],
+  },
+  "warm-contacts": {
+    useCase: "Find people I already know who fit the audience for my practical AI workshop. Give me a shortlist I can review.",
+    inputs: "Gmail reply history in my agent. Audience: founders and operations leads interested in practical AI.",
+  },
+};
 let selectedStep = 0;
 let insertIndex = 0;
+let resourceSequence = 0;
+
+function resourceField(row, key) {
+  return row.querySelector(`[name="${key}"]`);
+}
+
+function clearResourceErrors(container) {
+  container.querySelectorAll('input[aria-invalid="true"]').forEach(field => {
+    field.setCustomValidity("");
+    field.removeAttribute("aria-invalid");
+  });
+}
+
+function createResourceRow(values = {}, removable = true) {
+  const row = resourceTemplate.content.firstElementChild.cloneNode(true);
+  const sequence = ++resourceSequence;
+  for (const field of row.querySelectorAll("[name]")) {
+    field.id = `resource-${sequence}-${field.name}`;
+    field.closest("label").htmlFor = field.id;
+    if (field.name in values) field.value = values[field.name];
+  }
+  row.addEventListener("input", () => clearResourceErrors(removable ? resourceList : insertResource));
+  const remove = row.querySelector(".remove-resource");
+  if (removable) {
+    remove.addEventListener("click", () => {
+      row.remove();
+      clearResourceErrors(resourceList);
+      updateResourceCount();
+      addResourceButton.focus();
+    });
+  } else {
+    remove.remove();
+  }
+  return row;
+}
+
+function updateResourceCount() {
+  const rows = resourceList.querySelectorAll(".resource-row");
+  rows.forEach((row, index) => {
+    row.querySelector("legend").textContent = `Resource ${index + 1}`;
+    row.querySelector(".remove-resource").setAttribute("aria-label", `Remove resource ${index + 1}`);
+  });
+  addResourceButton.disabled = rows.length >= maxResources;
+  addResourceButton.textContent = addResourceButton.disabled ? "8 resources added" : "Add a tool or skill";
+}
+
+function showResourceError(field, message) {
+  field.setCustomValidity(message);
+  field.setAttribute("aria-invalid", "true");
+  field.reportValidity();
+}
+
+function readResources(container) {
+  const seen = new Set();
+  const resources = [];
+  for (const row of container.querySelectorAll(".resource-row")) {
+    const resource = {};
+    for (const key of ["kind", "name", "input", "output", "source"]) {
+      const field = resourceField(row, key);
+      resource[key] = field.value.trim();
+      if (field.required && !resource[key]) {
+        showResourceError(field, "Enter a value for this field.");
+        return null;
+      }
+    }
+    const identity = JSON.stringify([resource.kind, resource.name.toLowerCase()]);
+    if (seen.has(identity)) {
+      showResourceError(resourceField(row, "name"), "A resource with this name and type is already listed.");
+      return null;
+    }
+    seen.add(identity);
+    resources.push(resource);
+  }
+  return resources;
+}
+
+addResourceButton.addEventListener("click", () => {
+  if (resourceList.children.length >= maxResources) return;
+  const row = createResourceRow();
+  resourceList.append(row);
+  updateResourceCount();
+  resourceField(row, "kind").focus();
+});
+
+function showInsertResourceEditor(open) {
+  insertResourceForm.hidden = !open;
+  insertCustomButton.setAttribute("aria-expanded", String(open));
+  if (open) {
+    const row = insertResource.firstElementChild || createResourceRow({}, false);
+    if (!row.parentElement) insertResource.append(row);
+    resourceField(row, "kind").focus();
+  }
+}
+
+const catalogForm = document.querySelector("#insert-catalog");
+const chooseCatalog = document.querySelector("#choose-catalog");
+const catalogId = document.querySelector("#catalog-id");
+let insertRevision = 0;
+function showCatalog(open) {
+  catalogForm.hidden = !open;
+  chooseCatalog.setAttribute("aria-expanded", String(open));
+  if (open) { showInsertResourceEditor(false); catalogId.focus(); }
+}
+chooseCatalog.addEventListener("click", () => showCatalog(catalogForm.hidden));
+function resetInsertPanel() {
+  insertRevision++;
+  showCatalog(false);
+  catalogForm.reset();
+  insertPanel.hidden = true;
+  showInsertResourceEditor(false);
+  insertResource.replaceChildren();
+  insertStatus.textContent = "";
+}
+
+function showInsertPanel(index) {
+  insertIndex = index;
+  resetInsertPanel();
+  insertPanel.hidden = false;
+  const contactPath = recipe.steps.some(s => s.kind === "gmail" || /(?:people|email)/i.test(s.endpointId || ""));
+  for (const button of insertPanel.querySelectorAll('[data-addition$="-email"]')) button.hidden = !contactPath;
+  const position = index === recipe.steps.length ? "after the last step" : `before “${recipe.steps[index].title}”`;
+  document.querySelector("#insert-context").textContent = recipe.steps.length ? `Insert ${position}.` : "Add the first step.";
+  document.querySelector("#insert-title").focus();
+  insertPanel.scrollIntoView({block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth"});
+}
+
 const graph = createRecipeGraph(document.querySelector("#recipe-graph"), {
   select(index, alternatives) {
     document.querySelector("#step-inspector").hidden = false;
@@ -307,28 +499,89 @@ const graph = createRecipeGraph(document.querySelector("#recipe-graph"), {
     if (innerWidth < 701) document.querySelector("#step-inspector").scrollIntoView({block: "start"});
     else if (alternatives) target?.scrollIntoView({block: "nearest"});
   },
-  insert(index) { insertIndex=index;const panel=document.querySelector('#insert-menu');panel.hidden=false;document.querySelector('#insert-context').textContent=`Insert ${index === recipe.steps.length ? 'after the last step' : `before “${recipe.steps[index].title}”`}. I’ll check the new tool’s required inputs.`;document.querySelector('#insert-title').focus();panel.scrollIntoView({block:'nearest',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'}); }
+  insert: showInsertPanel
 });
 document.querySelector("#back-to-path").addEventListener("click", () => {
   document.querySelector("#step-inspector").hidden = true;
   document.querySelector(`[data-node="${selectedStep}"]`)?.focus();
 });
-function brief() { return {audience:audienceField.value.trim(),source:document.querySelector('[name="source"]:checked').value}; }
-peopleInput.addEventListener('input',()=>{const valid=positiveInteger(peopleInput.value);peopleInput.setCustomValidity(valid?'':'Enter a whole number from 1 to 1,000,000.');if(recipe&&valid){recipe.peoplePerRun=Number(peopleInput.value);updateCosts();}});
-document.querySelector('#cancel-insert').addEventListener('click',()=>{document.querySelector('#insert-menu').hidden=true;document.querySelector(`[data-node="${Math.min(insertIndex,recipe.steps.length-1)}"]`)?.focus();});
-document.querySelectorAll('[data-addition]').forEach(button=>button.addEventListener('click', async ()=>{
- if(!recipe)return;
- const addition=button.dataset.addition;const message=document.querySelector('#insert-status');
- document.querySelectorAll('[data-addition]').forEach(n=>n.disabled=true);message.textContent=addition==='human'?'Adding decision…':'Checking matching tools and inputs…';
- try {
- let step;
- if(addition==='human') step={title:'Review before continuing',endpointId:null,why:'Keep this decision with you.',input:recipe.steps[insertIndex-1]?.output||'Your brief',output:'Approved input for the next step',instructions:'Review the evidence. Continue only when you are satisfied.',alternatives:[]};
- else {const response=await fetch('/api/recipe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({addition})});const data=await response.json();if(!response.ok)throw new Error(data.error||'Could not inspect this tool.');step=data.recipe?.steps?.[0]||data.steps?.[0];if(!step)throw new Error('No compatible tool was returned.');}
- document.querySelector("#step-inspector").hidden=false;
- recipe.steps.splice(insertIndex,0,step);selectedStep=insertIndex;
- document.querySelector('#insert-menu').hidden=true;render();stepsList.querySelector('.step:not([hidden]) .step-title')?.focus();setRecipeStatus('Step added. Review its inputs and provider route.','success');
- }catch(error){message.textContent=error.message;}finally{document.querySelectorAll('[data-addition]').forEach(n=>n.disabled=false);}
-}));
+peopleInput.addEventListener("input", () => {
+  const valid = positiveInteger(peopleInput.value);
+  peopleInput.setCustomValidity(valid ? "" : "Enter a whole number from 1 to 1,000,000.");
+  if (recipe && valid) {
+    recipe.peoplePerRun = Number(peopleInput.value);
+    updateCosts();
+  }
+});
+
+function addStep(step, index) {
+  document.querySelector("#step-inspector").hidden = false;
+  recipe.steps.splice(index, 0, step);
+  selectedStep = index;
+  resetInsertPanel();
+  render();
+  stepsList.querySelector(".step:not([hidden]) .step-title")?.focus();
+  setRecipeStatus("Step added. Review how its inputs and outputs connect to the recipe.", "success");
+}
+
+document.querySelector("#cancel-insert").addEventListener("click", () => {
+  resetInsertPanel();
+  const trigger = document.querySelector(`[data-node="${Math.min(insertIndex, recipe.steps.length - 1)}"]`);
+  (trigger || document.querySelector(".path-action"))?.focus();
+});
+insertCustomButton.addEventListener("click", () => { showCatalog(false); showInsertResourceEditor(insertResourceForm.hidden); });
+insertResourceForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const resources = readResources(insertResource);
+  if (!recipe || !resources?.length) return;
+  const { kind, name, input, output, source } = resources[0];
+  const linkedInput = recipe.steps.slice(0, insertIndex).some(step => step.provides?.includes(input));
+  addStep({
+    kind: "custom", resourceKind: kind, resourceName: name, resourceSource: source,
+    title: `Use ${name}`, endpointId: null, input, output, alternatives: [], quantity: 1,
+    why: `Use your ${kind} for this part of the recipe.`,
+    provides: [output], ...(linkedInput ? {requires: [input]} : {}),
+    evidence: `Confirm the output contains ${output} before continuing.`,
+    instructions: `Make ${name} available in your agent and confirm it accepts the required input. Check that the result contains ${output} before continuing.`,
+  }, insertIndex);
+});
+
+catalogForm.addEventListener("submit", event => { event.preventDefault(); requestAddition("catalog-tool"); });
+document.querySelectorAll('button[data-addition]:not([type="submit"])').forEach(button =>
+  button.addEventListener("click", () => requestAddition(button.dataset.addition)));
+async function requestAddition(addition) {
+  if (!recipe) return;
+  const revision = insertRevision;
+  const editedRecipe = recipe;
+  const before = recipe.steps[insertIndex];
+  if (addition === "human") {
+    addStep({
+      title: "Review before continuing", kind: "human", endpointId: null, why: "Keep this decision with you.",
+      input: recipe.steps[insertIndex - 1]?.output || "Your brief", output: "Approved input for the next step",
+      instructions: "Review the evidence. Continue only when you are satisfied.", alternatives: []
+    }, insertIndex);
+    return;
+  }
+  document.querySelectorAll("[data-addition]").forEach(option => option.disabled = true);
+  insertStatus.textContent = "Checking matching tools and inputs…";
+  try {
+    const response = await fetch("/api/recipe", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(addition === "catalog-tool" ? {addition, endpointId:catalogId.value.trim()} : {addition})});
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Could not inspect this tool.");
+    const step = data.recipe?.steps?.[0] || data.steps?.[0];
+    if (!step) throw new Error("No compatible tool was returned.");
+    if (revision !== insertRevision || recipe !== editedRecipe || (before && !recipe.steps.includes(before))) return;
+    if (step.endpointId) {
+      (recipe.planningLog ||= []).push({type: "inspect", endpointId: step.endpointId});
+      appendTrace("inspect", step.endpointId);
+    }
+    addStep(step, before ? recipe.steps.indexOf(before) : recipe.steps.length);
+  } catch (error) {
+    if (revision === insertRevision && recipe === editedRecipe) insertStatus.textContent = error.message;
+  } finally {
+    document.querySelectorAll("[data-addition]").forEach(option => option.disabled = false);
+  }
+}
 
 function positiveInteger(value) {
   return Number.isSafeInteger(Number(value)) && Number(value) >= 1 && Number(value) <= 1000000;
@@ -369,7 +622,11 @@ function updateCosts() {
   showCost("#cost-per-run", single.label);
   showCost("#cost-at-volume", volume.label);
   document.querySelector("#volume-cost-label").textContent = `For ${(recipe.runs || 1).toLocaleString()} run${recipe.runs === 1 ? "" : "s"}`;
-  document.querySelector("#cost-note").textContent = "People per run scales contact lookups. Recipe runs repeats the whole workflow. The subtotal uses published Treg rates and excludes steps without a known price.";
+  const itemVolume = recipe.source === "cookbook" || recipe.steps.some(step => step.perItem);
+  document.querySelector("#items-per-run-label").textContent = itemVolume ? "Items per run" : "People per run";
+  document.querySelector("#cost-note").textContent = itemVolume
+    ? "Items per run scales steps marked per item. Recipe runs repeats the whole workflow. Published Treg rates cover the priced steps."
+    : "People per run scales contact lookups. Recipe runs repeats the whole workflow. Published Treg rates cover the priced steps.";
   updateHandoff();
   stepsList.querySelectorAll(".step").forEach(row => {
     const cost = estimateStepCost(recipe.steps[Number(row.dataset.index)], 1, recipe.peoplePerRun || 1);
@@ -414,7 +671,8 @@ function providesEmail(step) {
   return Boolean(step && (step.catalog?.producesEmail || step.kind === 'gmail' || step.providesEmail));
 }
 function reconcileInputGaps() {
-  recipe.gaps = (recipe.gaps || []).filter(gap => !gap.startsWith('[Input fit]') && gap !== 'Input check: supply or find an email address before verification.');
+  recipe.gaps = (recipe.gaps || []).filter(gap => !gap.startsWith("[Handoff] ") && !gap.startsWith("[Input fit]") && gap !== "Input check: supply or find an email address before verification.");
+  recipe.gaps.push(...dependencyGaps(recipe.steps));
   recipe.steps.forEach((step,index) => {
     const requiresEmail=step.catalog?.needsEmail === true || /\.email\.verify(?:\.|$)/.test(step.endpointId || '');
     if(requiresEmail && !providesEmail(recipe.steps[index-1])) recipe.gaps.push(`[Input fit] Step ${index+1} needs an email address from the preceding step. Supply a known email or add email finding first.`);
@@ -490,7 +748,10 @@ function render() {
     } else {
       const human = document.createElement("span");
       human.className = "endpoint";
-      human.textContent = step.kind === "gmail" ? "Gmail · your agent’s own connection" : step.kind === "skill" ? "Agent skill · no catalog tool" : "Human decision";
+      human.textContent = step.kind === "gmail" ? "Gmail · connection needed in your agent"
+        : step.kind === "skill" ? "Agent skill"
+        : step.kind === "custom" ? `Custom ${step.resourceKind} · ${step.resourceName}`
+        : step.kind === "blocked" ? "Needed · external dependency" : "Human decision";
       toolLine.append(human);
     }
     if (step.kind === "skill" && step.skillUrl) {
@@ -522,17 +783,21 @@ function render() {
     const detailGrid = document.createElement("div");
     detailGrid.className = "detail-grid";
     detailGrid.append(
-      textAreaField("Why this tool", step.why, "why"),
+      textAreaField("Why this step", step.why, "why"),
       textAreaField("Needs", step.input, "input"),
       textAreaField("Returns", step.output, "output"),
       textAreaField("Instructions", step.instructions, "instructions")
     );
+    if (step.evidence) detailGrid.append(textAreaField("Accept when", step.evidence, "evidence"));
     const ingredient = document.createElement("div");
     ingredient.className = "ingredient";
-    if (step.endpointId) {
+    if (step.endpointId || step.kind === "custom") {
       step.quantity ||= 1;
       const quantityLabel = document.createElement("label");
-      quantityLabel.append(document.createTextNode(step.perContact ? "Calls per person" : "Tool calls per run"));
+      const quantityKind = step.resourceKind === "skill" ? "Uses" : "Calls";
+      const unitLabel = step.perItem || (step.perContact && recipe.source === "cookbook") ? "item" : step.perContact ? "person" : "run";
+      const quantityText = `${quantityKind} per ${unitLabel}`;
+      quantityLabel.append(document.createTextNode(quantityText));
       const quantity = document.createElement("input");
       quantity.className = "quantity-input";
       quantity.type = "number";
@@ -542,14 +807,23 @@ function render() {
       quantity.inputMode = "numeric";
       quantity.value = step.quantity;
       quantity.dataset.quantity = "true";
-      quantity.setAttribute("aria-label", `${step.perContact ? "Calls per person" : "Tool calls per run"} for step ${index + 1}`);
+      quantity.setAttribute("aria-label", `${quantityText} for step ${index + 1}`);
       quantityLabel.append(quantity);
       ingredient.append(quantityLabel);
     }
     const cost = document.createElement("span");
     cost.className = "step-cost";
     ingredient.append(cost);
-    content.append(top, toolLine, ingredient, detailGrid);
+    content.append(top, toolLine);
+    if (step.kind === "custom") {
+      const source = document.createElement("p");
+      source.className = "resource-identity";
+      source.textContent = step.resourceSource
+        ? `Source to verify in your agent: ${step.resourceSource}`
+        : `Supply the ${step.resourceKind} in your agent and verify its input and output.`;
+      content.append(source);
+    }
+    content.append(ingredient, detailGrid);
     if (step.catalog?.cost?.note) {
       const pricing = document.createElement("details");
       pricing.className = "route-panel";
@@ -577,6 +851,17 @@ function render() {
   recipe.gaps.forEach((gap) => {
     const row = document.createElement("li");
     row.textContent = gap;
+    if (gap.startsWith("[Handoff] ")) {
+      const index = Number(gap.match(/^\[Handoff\] Step (\d+)/)?.[1]) - 1;
+      if (Number.isInteger(index)) {
+        const repair = document.createElement("button");
+        repair.type = "button";
+        repair.className = "text-button";
+        repair.textContent = "Insert a preceding step";
+        repair.addEventListener("click", () => showInsertPanel(index));
+        row.append(document.createTextNode(" "), repair);
+      }
+    }
     if(gap.startsWith('[Input fit]')) {
       const index=Number(gap.match(/^\[Input fit\] Step (\d+)/)?.[1])-1;
       const repair=document.createElement('button');repair.type='button';repair.className='text-button';repair.textContent='Add email-finding step';repair.addEventListener('click',()=>{insertIndex=index;document.querySelector('[data-addition="find-email"]').click();});row.append(document.createTextNode(' '),repair);
@@ -621,7 +906,7 @@ stepsList.addEventListener("change", (event) => {
   if (!chosen) return;
   const previousTool = step.endpointId;
   step.alternatives = [
-    { endpointId: step.endpointId, endpointUrl: step.endpointUrl, why: step.why, input: step.input, output: step.output, catalog: step.catalog, perContact: step.perContact },
+    { endpointId: step.endpointId, endpointUrl: step.endpointUrl, why: step.why, input: step.input, output: step.output, catalog: step.catalog, perContact: step.perContact, perItem: step.perItem },
     ...step.alternatives.filter((_, optionIndex) => optionIndex !== Number(select.value))
   ];
   const perContact = chosen.perContact ?? step.perContact;
@@ -660,15 +945,15 @@ stepsList.addEventListener("click", (event) => {
   if (movedControl && !movedControl.disabled) movedControl.focus();
   else stepsList.querySelector(`.step[data-index="${neighbor}"] .step-title`)?.focus();
 });
-document.querySelector("#try-example").addEventListener("click", () => {
+exampleButtons.forEach(button => button.addEventListener("click", () => {
   if (busy) return;
-  useCaseField.value = "Find warm leads for my AI workshop from people who have replied to my emails. Enrich the relevant people and help me choose who to contact.";
-  audienceField.value="Founders and operators interested in practical AI; my agent can access Gmail reply history.";
-  document.querySelector('[name="source"][value="both"]').checked=true;
-  document.querySelector('#brief-questions').hidden=false;
-  document.querySelector('#brief-source-note').hidden=false;
-  buildRecipe();
-});
+  const example = examples[button.dataset.example];
+  useCaseField.value = example.useCase;
+  inputsField.value = example.inputs;
+  resourceList.replaceChildren(...(example.resources || []).map(resource => createResourceRow(resource)));
+  updateResourceCount();
+  form.requestSubmit(buildButton);
+}));
 document.querySelector("#copy-recipe").addEventListener("click", async (event) => {
   if (!recipe) return;
   const button = event.currentTarget;
@@ -738,28 +1023,25 @@ async function buildRecipe() {
     useCaseField.focus();
     return;
   }
-  if (!audienceField.value.trim()) {
-    document.querySelector('#brief-questions').hidden=false;
-    document.querySelector('#brief-source-note').hidden=false;
-    setStatus("Who is this for, and which source should your agent use?");
-    audienceField.focus();return;
-  }
   if (busy) return;
+  const resources = readResources(resourceList);
+  if (!resources) return;
+  const brief = {source: "cookbook", inputs: inputsField.value.trim(), resources};
   busy = true;
   buildButton.disabled = true;
   buildButton.textContent = "Planning…";
-  setStatus(brief().source === "gmail" ? "Writing the Gmail steps for your agent." : "Checking the tools in the live Treg catalog.");
+  setStatus("Planning the steps and checking tool options.");
   terminalLines.replaceChildren();
   document.querySelector("#inspected-tray").replaceChildren();
   terminal.hidden = false;
   terminalState.textContent = "Connecting";
-  document.querySelector("#try-example").disabled = true;
+  exampleButtons.forEach(button => button.disabled = true);
   let receivedRecipe = false;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 120000);
   try {
     const response = await fetch("/api/recipe", {
-      method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/x-ndjson" }, body: JSON.stringify({ useCase, brief: brief() }), signal: controller.signal
+      method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/x-ndjson" }, body: JSON.stringify({ useCase, brief }), signal: controller.signal
     });
     if (!response.ok) {
       const result = await response.json().catch(() => ({}));
@@ -782,6 +1064,7 @@ async function buildRecipe() {
       if (event.type === "recipe") {
         if (!event.recipe || !Array.isArray(event.recipe.steps)) throw new Error("The planner returned an incomplete recipe. Please try again.");
         recipe = event.recipe;
+        resetInsertPanel();
         document.querySelector("#step-inspector").hidden = true;
         selectedStep=0;
         recipe.gaps ||= [];
@@ -805,7 +1088,7 @@ async function buildRecipe() {
     } finally { reader.cancel().catch(() => {}); }
     if (!receivedRecipe) throw new Error("The connection ended before a recipe arrived. Please try again.");
     terminalState.textContent = "Complete";
-    setStatus(recipe.steps.length ? "Recipe ready." : "Answer the open questions to complete the recipe.", "success");
+    setStatus(recipe.gaps.length ? "Recipe drafted with open questions." : "Recipe ready.", "success");
     setRecipeStatus(recipe.steps.length ? "" : "Add the missing details before handing this to your agent.");
     recipePanel.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
   } catch (error) {
@@ -816,13 +1099,15 @@ async function buildRecipe() {
     setStatus(message || "The catalog or recipe planner is unavailable.", "error");
   } finally {
     clearTimeout(timeout);
-    document.querySelector("#try-example").disabled = false;
-    document.querySelector("#try-example").textContent = "Try a warm-leads recipe";
+    exampleButtons.forEach(button => button.disabled = false);
     busy = false;
     buildButton.disabled = false;
     buildButton.textContent = "Build a recipe";
   }
 }
+const requestedExample = new URLSearchParams(location.search).get("example");
+const initialExample = [...exampleButtons].find(button => button.dataset.example === requestedExample);
+initialExample?.click();
 </script>
 </body>
 </html>
