@@ -11,3 +11,5 @@ node_modules/
 
 /public/recipe-path.js
 /public/recipe-path.js.LEGAL.txt
+
+/public/handoffs.js
