@@ -51,10 +51,36 @@ test('NDJSON ends with a safe error when catalog operations fail', async () => {
   assert.equal(res.events().filter((event) => event.type === 'search').length, 2);
 });
 
-test('NDJSON reports a paused generation without inventing catalog activity', async () => {
+const paused = async () => { throw Object.assign(new Error('Generation is paused.'), { code: 'generation_paused', status: 503 }); };
+
+test('an unfunded lead request streams catalog inspection and a priced editable recipe', async () => {
   const res = response();
-  await createRecipeHandler({ generate: async () => { throw Object.assign(new Error('Generation is paused.'), { code: 'generation_paused', status: 503 }); } })(request, res);
-  assert.deepEqual(res.events(), [{ type: 'error', error: 'Generation is paused.' }]);
+  const fetchImpl = async (url) => {
+    const path = new URL(url);
+    assert.equal(path.hostname, 'treg.to');
+    if (path.pathname === '/catalog/search') {
+      assert.equal(path.searchParams.get('q'), 'search people by job title company industry location');
+      return Response.json({results:[{id:'treg.people.search'}]});
+    }
+    assert.equal(path.pathname, '/catalog/endpoints/treg.people.search');
+    return Response.json({endpoint:{id:'treg.people.search',name:'Search people',summary:'Find by job title', cost:{usd:.01,type:'per_call'}}});
+  };
+  await createRecipeHandler({ generate: paused, fetchImpl })({...request,body:{useCase:'i want to get more leads'}},res);
+  const events = res.events();
+  assert.deepEqual(events.map(e=>e.type), ['status','search','inspect','recipe']);
+  const recipe = events.at(-1).recipe;
+  assert.equal(recipe.mode,'catalog');
+  assert.deepEqual(recipe.steps.map(s=>s.endpointId),[null,'treg.people.search',null]);
+  assert.equal(recipe.steps[1].catalog.cost.usd,.01);
+  assert.ok(recipe.gaps[0].includes('buyer role'));
+});
+
+test('an unrecognized unfunded request asks for clarification without sending private text', async () => {
+  const res = response();
+  await createRecipeHandler({generate:paused, fetchImpl:async()=>assert.fail('unexpected external query')})(
+    {...request,body:{useCase:'help Marigold at jane@example.invalid'}},res);
+  assert.deepEqual(res.events().at(-1).recipe.steps,[]);
+  assert.ok(res.events().at(-1).recipe.gaps.length);
 });
 
 test('six jobs retain every inspected ID while oversized catalog prose is bounded', async () => {

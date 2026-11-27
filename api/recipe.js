@@ -1,4 +1,5 @@
 import { cleanRecipe, MAX_STEPS } from "../lib/recipe.js";
+import { catalogIntent, catalogDraft } from "../lib/catalog-draft.js";
 import { example } from "../lib/example.js";
 import { withGenerationBudget } from "../lib/gateway.js";
 
@@ -43,7 +44,7 @@ function compactEndpoint(id, detail) {
     scope: endpoint.scope, status: endpoint.status, cost: endpoint.cost,
     price: endpoint.price, pricing: endpoint.pricing, pricingType: endpoint.pricingType, pricing_type: endpoint.pricing_type,
     unit: endpoint.unit, currency: endpoint.currency, billing: endpoint.billing, availability: endpoint.availability, requiredInputs: required,
-    inputNote: input.note, callTemplate: detail.call_template,
+    inputNote: input.note, outputFields: Object.keys(detail.example_response || {}).filter(key => !/^\d+$/.test(key)).slice(0, 8), callTemplate: detail.call_template,
     exampleOutput: detail.example_response ? JSON.stringify(detail.example_response).slice(0, 700) : undefined,
     siblings: (detail.siblings || []).slice(0, 2).map(({ id: siblingId, name, cost }) => ({ id: siblingId, name, cost })) };
 }
@@ -61,6 +62,15 @@ function promptCandidates(candidates, limit) {
   return candidates.map(({ id, name, summary, method, kind, scope, status, cost, pricing, requiredInputs, inputNote }) => ({
     ...shorten({ name, summary, method, kind, scope, status, cost, pricing, requiredInputs, inputNote }), id,
   }));
+}
+
+async function inspectEndpoints(ids, fetchImpl, emit) {
+  return new Map(await Promise.all(ids.map(async (id) => {
+    emit({ type: "inspect", endpointId: id });
+    const detail = await catalog(`/catalog/endpoints/${encodeURIComponent(id)}`, fetchImpl);
+    if (detail.endpoint?.id !== id) throw Object.assign(new Error("Catalog inspection mismatch."), { status: 502 });
+    return [id, compactEndpoint(id, detail)];
+  })));
 }
 
 function promptForJobs(useCase) {
@@ -94,17 +104,14 @@ export function createRecipeHandler({ fetchImpl = fetch, generate = withGenerati
         emit({ type: "status", message: "Loading the prewritten sample and checking live catalog prices. No AI planning or tool execution." });
         await searchCatalog("extract web page content", fetchImpl, emit);
         const ids = [...new Set(example.steps.flatMap((step) => [step.endpointId, ...step.alternatives.map((item) => item.endpointId)]).filter(Boolean))];
-        const inspected = await Promise.all(ids.map(async (id) => {
-          emit({ type: "inspect", endpointId: id });
-          const detail = await catalog(`/catalog/endpoints/${encodeURIComponent(id)}`, fetchImpl);
-          if (detail.endpoint?.id !== id) throw Object.assign(new Error("Catalog inspection mismatch."), { status: 502 });
-          return [id, compactEndpoint(id, detail)];
-        }));
-        const recipe = { ...cleanRecipe(example, new Map(inspected)), sample: true };
+        const inspected = await inspectEndpoints(ids, fetchImpl, emit);
+        const recipe = { ...cleanRecipe(example, inspected), sample: true };
         if (streaming) return finishStream({ type: "recipe", recipe });
         return res.status(200).json(recipe);
       }
+      let modelStarted = false;
       const recipe = await generate(async (complete) => {
+        modelStarted = true;
         emit({ type: "status", message: "Identifying the jobs and required inputs." });
         const decomposition = await complete(promptForJobs(useCase.trim()), 700);
         const jobs = Array.isArray(decomposition?.jobs) ? decomposition.jobs.slice(0, MAX_STEPS).filter((job) => job && typeof job.job === "string") : [];
@@ -117,13 +124,7 @@ export function createRecipeHandler({ fetchImpl = fetch, generate = withGenerati
           return searchCatalog(query, fetchImpl, emit);
         }));
         const ids = [...new Set(searches.flat())];
-        const inspected = await Promise.all(ids.map(async (id) => {
-          emit({ type: "inspect", endpointId: id });
-          const detail = await catalog(`/catalog/endpoints/${encodeURIComponent(id)}`, fetchImpl);
-          if (detail.endpoint?.id !== id) throw Object.assign(new Error("Catalog inspection mismatch."), { status: 502 });
-          return [id, compactEndpoint(id, detail)];
-        }));
-        const inspectedById = new Map(inspected);
+        const inspectedById = await inspectEndpoints(ids, fetchImpl, emit);
         const jobsWithCandidates = jobs.map((job, index) => ({ ...job, candidateIds: searches[index] }));
         let prompt;
         for (const limit of [300, 160, 80, 40]) {
@@ -140,6 +141,16 @@ export function createRecipeHandler({ fetchImpl = fetch, generate = withGenerati
           .filter((gap) => typeof gap === "string").map((gap) => gap.trim()).filter(Boolean))];
         if (!steps.length && !gaps.length) gaps.push("No suitable catalog endpoint was found for this use case.");
         return cleanRecipe({ title: typeof planned?.title === "string" ? planned.title : "Recipe needs more information", steps, gaps }, inspectedById);
+      }).catch(async (error) => {
+        if (modelStarted || !["generation_paused", "generation_limit"].includes(error.code)) throw error;
+        emit({ type: "status", message: "Using catalog-only planning. No planning model is running." });
+        const intent = catalogIntent(useCase);
+        const ids = intent.query ? await searchCatalog(intent.query, fetchImpl, emit) : [];
+        const inspected = await inspectEndpoints([...new Set(ids)], fetchImpl, emit);
+        const matches = [...inspected.values()].filter(tool => !intent.leads ||
+          /people[.]search|search.*(?:people|contacts|prospects)|find people/i.test(tool.id + " " + tool.name));
+        const draft = catalogDraft(intent, matches);
+        return { ...cleanRecipe(draft, inspected), mode: "catalog" };
       });
       if (streaming) return finishStream({ type: "recipe", recipe });
       return res.status(200).json(recipe);
