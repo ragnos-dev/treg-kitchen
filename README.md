@@ -1,8 +1,8 @@
 # treg-kitchen
 
-Describe a job, answer two questions and edit the proposed path. The sous-chef starts with the live Treg catalog and can include a future read-only Gmail step, a qualification skill and human review. The site generates instructions you can hand to your coding agent. Mailbox connections and recipe execution happen in that agent. Hover, focus or tap a connection to trace what one step passes to the next. A single beam follows the connection, or a static highlight appears with reduced motion. Select a node to inspect its inputs, outputs, instructions and available pricing. Read the human TL;DR, inspect the path, and use **Copy for my agent** for the full instructions.
+Describe a job, answer two questions and edit the proposed path. The sous-chef starts with Treg’s live catalog. The warm-contact recipe demonstrates how a Treg endpoint can work alongside Gmail, a local skill and human review. The site generates instructions you can hand to your coding agent. Mailbox connections and recipe execution happen in that agent. Hover, focus or tap a connection to trace what one step passes to the next. A single beam follows the connection, or a static highlight appears with reduced motion. Select a node to see its purpose, inputs, output and available price. Choose **Edit step** to adjust the instructions or switch tools. Read the human TL;DR, inspect the path, and use **Copy for my agent** for the full instructions.
 
-[Open treg-kitchen](https://treg-kitchen.ragnos.io)
+[Open treg-kitchen](https://treg-kitchen.ragnos.io) · [Product requirements and current coverage](PRD.md)
 
 ## Use the skill
 

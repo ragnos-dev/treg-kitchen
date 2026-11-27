@@ -206,7 +206,7 @@ dialog::backdrop { background: #29272166; }
   </section>
   <form class="compose" id="recipe-form" aria-label="Recipe brief">
     <label class="field-label" for="use-case">What are we making?</label>
-    <textarea id="use-case" name="useCase" required maxlength="1200" placeholder="Find people who might want my AI workshop, then help me decide who to contact."></textarea>
+    <textarea id="use-case" name="useCase" required maxlength="1200" placeholder="I have a company website and a claim. Help me find the evidence and write a short brief."></textarea>
     <div class="brief-grid" id="brief-questions" hidden>
       <div><label class="field-label" for="brief-audience">Who is it for, and what do you have?</label><input class="brief-input" id="brief-audience" name="audience" maxlength="500" placeholder="e.g. NYC founders; I have names and company URLs"></div>
       <fieldset class="source-picker"><legend class="field-label">Where should we start?</legend><div class="source-options">
@@ -241,8 +241,12 @@ dialog::backdrop { background: #29272166; }
       </div>
     </div>
     <section class="human-summary" aria-labelledby="human-summary-heading"><h2 id="human-summary-heading">Recipe TL;DR</h2><p id="recipe-tldr"></p></section>
-    <details class="agent-preview" id="agent-preview"><summary>Preview agent instructions</summary><p>These are the exact instructions copied by “Copy for my agent”.</p><pre id="agent-instructions"></pre></details>
     <p class="status" id="recipe-status" role="status" aria-live="polite" aria-atomic="true"></p>
+    <div class="graph-workspace" role="group" aria-label="Interactive recipe path">
+      <div class="graph-map" id="recipe-graph"></div>
+      <section hidden class="step-inspector" id="step-inspector" aria-labelledby="inspector-heading"><div class="inspector-nav"><h2 class="inspector-heading" id="inspector-heading" tabindex="-1">Inside this step</h2><button id="back-to-path" type="button" class="text-button">Close editor</button></div><ol class="steps" id="steps" role="list"></ol></section>
+    </div>
+    <details class="recipe-disclosure"><summary>Run estimate <span id="cost-quick"></span></summary>
     <div class="cost-summary" aria-label="Estimated tool costs">
       <div><span class="detail-label">Per recipe run</span><output class="cost-value" id="cost-per-run"></output></div>
       <div><span class="detail-label" id="volume-cost-label">At your volume</span><output class="cost-value" id="cost-at-volume"></output></div>
@@ -250,11 +254,8 @@ dialog::backdrop { background: #29272166; }
       <label class="volume-control" for="recipe-volume"><span class="detail-label">Recipe runs</span><input class="quantity-input" id="recipe-volume" type="number" min="1" max="1000000" step="1" value="1" inputmode="numeric"></label>
       <p class="cost-note" id="cost-note"></p>
     </div>
-    <p class="graph-help">Choose a node to see inside. Hover or tap a line to trace what it carries.</p>
-    <div class="graph-workspace" role="group" aria-label="Interactive recipe path">
-      <div class="graph-map" id="recipe-graph"></div>
-      <section class="step-inspector" id="step-inspector" aria-labelledby="inspector-heading"><div class="inspector-nav"><h2 class="inspector-heading" id="inspector-heading" tabindex="-1">Inside this step</h2><button id="back-to-path" type="button" class="text-button">Back to path</button></div><ol class="steps" id="steps" role="list"></ol></section>
-    </div>
+    </details>
+    <details class="agent-preview" id="agent-preview"><summary>Preview agent instructions</summary><pre id="agent-instructions"></pre></details>
     <section class="insert-menu" id="insert-menu" aria-labelledby="insert-title" hidden><h3 id="insert-title" tabindex="-1">Add a step</h3><p id="insert-context"></p><div class="insert-options"><button class="outline" type="button" data-addition="verify-email">Verify an email</button><button class="outline" type="button" data-addition="find-email">Find an email</button><button class="outline" type="button" data-addition="human">Human decision</button><button class="text-button" type="button" id="cancel-insert">Cancel</button></div><p id="insert-status" role="status"></p></section>
     <div class="gaps" id="gaps" hidden>
       <h3>Open questions</h3>
@@ -271,7 +272,7 @@ dialog::backdrop { background: #29272166; }
 <script type="module">
 import { recipeMarkdown, recipeTldr, estimateStepCost, estimateRecipeCost } from "/recipe-format.js";
 
-import { createRecipeGraph } from "/graph-ui.js";
+import { createRecipeGraph } from "/recipe-path.js";
 
 const form = document.querySelector("#recipe-form");
 const useCaseField = document.querySelector("#use-case");
@@ -298,6 +299,7 @@ let selectedStep = 0;
 let insertIndex = 0;
 const graph = createRecipeGraph(document.querySelector("#recipe-graph"), {
   select(index, alternatives) {
+    document.querySelector("#step-inspector").hidden = false;
     selectedStep = index;
     render();
     const target = alternatives ? stepsList.querySelector(".step:not([hidden]) .alternative") : document.querySelector("#inspector-heading");
@@ -307,7 +309,10 @@ const graph = createRecipeGraph(document.querySelector("#recipe-graph"), {
   },
   insert(index) { insertIndex=index;const panel=document.querySelector('#insert-menu');panel.hidden=false;document.querySelector('#insert-context').textContent=`Insert ${index === recipe.steps.length ? 'after the last step' : `before “${recipe.steps[index].title}”`}. I’ll check the new tool’s required inputs.`;document.querySelector('#insert-title').focus();panel.scrollIntoView({block:'nearest',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'}); }
 });
-document.querySelector("#back-to-path").addEventListener("click", () => document.querySelector(`[data-node="${selectedStep}"]`)?.focus());
+document.querySelector("#back-to-path").addEventListener("click", () => {
+  document.querySelector("#step-inspector").hidden = true;
+  document.querySelector(`[data-node="${selectedStep}"]`)?.focus();
+});
 function brief() { return {audience:audienceField.value.trim(),source:document.querySelector('[name="source"]:checked').value}; }
 peopleInput.addEventListener('input',()=>{const valid=positiveInteger(peopleInput.value);peopleInput.setCustomValidity(valid?'':'Enter a whole number from 1 to 1,000,000.');if(recipe&&valid){recipe.peoplePerRun=Number(peopleInput.value);updateCosts();}});
 document.querySelector('#cancel-insert').addEventListener('click',()=>{document.querySelector('#insert-menu').hidden=true;document.querySelector(`[data-node="${Math.min(insertIndex,recipe.steps.length-1)}"]`)?.focus();});
@@ -319,6 +324,7 @@ document.querySelectorAll('[data-addition]').forEach(button=>button.addEventList
  let step;
  if(addition==='human') step={title:'Review before continuing',endpointId:null,why:'Keep this decision with you.',input:recipe.steps[insertIndex-1]?.output||'Your brief',output:'Approved input for the next step',instructions:'Review the evidence. Continue only when you are satisfied.',alternatives:[]};
  else {const response=await fetch('/api/recipe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({addition})});const data=await response.json();if(!response.ok)throw new Error(data.error||'Could not inspect this tool.');step=data.recipe?.steps?.[0]||data.steps?.[0];if(!step)throw new Error('No compatible tool was returned.');}
+ document.querySelector("#step-inspector").hidden=false;
  recipe.steps.splice(insertIndex,0,step);selectedStep=insertIndex;
  document.querySelector('#insert-menu').hidden=true;render();stepsList.querySelector('.step:not([hidden]) .step-title')?.focus();setRecipeStatus('Step added. Review its inputs and provider route.','success');
  }catch(error){message.textContent=error.message;}finally{document.querySelectorAll('[data-addition]').forEach(n=>n.disabled=false);}
@@ -356,8 +362,10 @@ function showCost(target, label) {
 }
 function updateCosts() {
   if (!recipe) return;
+  graph.draw(recipe,selectedStep);
   const single = estimateRecipeCost(recipe, 1);
   const volume = estimateRecipeCost(recipe, recipe.runs || 1);
+  document.querySelector("#cost-quick").textContent = single.label + " per run";
   showCost("#cost-per-run", single.label);
   showCost("#cost-at-volume", volume.label);
   document.querySelector("#volume-cost-label").textContent = `For ${(recipe.runs || 1).toLocaleString()} run${recipe.runs === 1 ? "" : "s"}`;
@@ -576,7 +584,6 @@ function render() {
     gapList.append(row);
   });
   gapPanel.hidden = recipe.gaps.length === 0;
-  graph.draw(recipe,selectedStep);
   updateCosts();
 }
 
@@ -636,6 +643,7 @@ stepsList.addEventListener("click", (event) => {
     selectedStep=Math.min(index,recipe.steps.length-1);
     render();
     if (!recipe.steps.length) {
+      document.querySelector("#step-inspector").hidden = true;
       setStatus("All steps removed. Describe the recipe again, or build a new one.");
       useCaseField.focus();
     } else {
@@ -774,6 +782,7 @@ async function buildRecipe() {
       if (event.type === "recipe") {
         if (!event.recipe || !Array.isArray(event.recipe.steps)) throw new Error("The planner returned an incomplete recipe. Please try again.");
         recipe = event.recipe;
+        document.querySelector("#step-inspector").hidden = true;
         selectedStep=0;
         recipe.gaps ||= [];
         receivedRecipe = true;
@@ -797,7 +806,7 @@ async function buildRecipe() {
     if (!receivedRecipe) throw new Error("The connection ended before a recipe arrived. Please try again.");
     terminalState.textContent = "Complete";
     setStatus(recipe.steps.length ? "Recipe ready." : "Answer the open questions to complete the recipe.", "success");
-    setRecipeStatus(recipe.steps.length ? "Yes, chef. Your recipe is ready to hand to your agent." : "Add the missing details before handing this to your agent.");
+    setRecipeStatus(recipe.steps.length ? "" : "Add the missing details before handing this to your agent.");
     recipePanel.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
   } catch (error) {
     terminalState.textContent = "Stopped";
