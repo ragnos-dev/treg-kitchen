@@ -2,6 +2,7 @@ import { cleanRecipe, MAX_STEPS } from "../lib/recipe.js";
 import { catalogIntent, catalogDraft } from "../lib/catalog-draft.js";
 import { example } from "../lib/example.js";
 import { withGenerationBudget } from "../lib/gateway.js";
+import { additionDraft, sourceDraft, sourceSearch } from "../lib/source-planner.js";
 
 const CATALOG = "https://treg.to";
 const MAX_USE_CASE_CHARS = 1200;
@@ -31,20 +32,35 @@ async function searchCatalog(query, fetchImpl, emit) {
 }
 
 function genericSearchQuery(job) {
-  return job.replace(/https?:\/\/\S+/gi, " ").replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, " ")
-    .replace(/\b[A-Z][\w&.'-]*(?:\s+[A-Z][\w&.'-]*){0,2}\b/g, " ").replace(/\b\d[\w.-]*\b/g, " ")
-    .replace(/[^\p{L}\p{N}\s-]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 160);
+  // An allowlist, rather than redacting apparent names, also excludes lowercase
+  // private names or record IDs returned in a model's decomposition.
+  return catalogIntent(job).query;
 }
 
-function compactEndpoint(id, detail) {
+export function compactEndpoint(id, detail) {
   const endpoint = detail.endpoint;
   const input = endpoint.input || {};
-  const required = Object.entries(input.queryParams || input.body || {}).filter(([, value]) => value?.required).map(([name, value]) => ({ name, type: value.type, note: value.note }));
+  const fields = { ...input.queryParams, ...input.body };
+  const required = Object.entries(fields).filter(([, value]) => value?.required).map(([name, value]) => ({ name, type: value.type, note: value.note }));
+  const contract = detail.routing?.contract;
+  const routing = detail.routing ? {
+    plan: (detail.routing.plan || []).filter(item => typeof item.endpoint_id === 'string').map(item => ({
+      endpoint_id: item.endpoint_id,
+      accepts: Array.isArray(item.accepts) ? item.accepts.filter(Array.isArray).map(group => group.filter(field => typeof field === 'string')) : [],
+      usd: typeof item.usd === 'number' && Number.isFinite(item.usd) && item.usd >= 0 ? item.usd : null,
+    })), miss: contract?.miss ?? endpoint.miss ?? null,
+  } : null;
+  const outputFields = Object.keys(contract?.output || endpoint.output?.body || endpoint.output?.properties || detail.example_response?.output || detail.example_response || {}).filter(key => !/^\d+$/.test(key)).slice(0, 20);
+  const identities = contract?.identity;
+  const needsEmail = required.some(field => field.name === 'email') || /people\.email\.verify(?:\.|$)/.test(endpoint.capability || id)
+    || Boolean(identities?.length && identities.every(group => Array.isArray(group) && group.includes('email')));
+  const producesEmail = outputFields.includes('email') || endpoint.capability === 'people.email.find' || /\.people\.email\.find$/.test(id);
   return { id, name: endpoint.name, summary: endpoint.summary, method: endpoint.method, kind: endpoint.kind,
-    scope: endpoint.scope, status: endpoint.status, cost: endpoint.cost,
+    scope: endpoint.scope, status: endpoint.status, cost: endpoint.cost, capability: endpoint.capability,
+    docsUrl: endpoint.docs_url || null, routing, producesEmail, needsEmail, inputFields: Object.keys(fields),
     price: endpoint.price, pricing: endpoint.pricing, pricingType: endpoint.pricingType, pricing_type: endpoint.pricing_type,
     unit: endpoint.unit, currency: endpoint.currency, billing: endpoint.billing, availability: endpoint.availability, requiredInputs: required,
-    inputNote: input.note, outputFields: Object.keys(detail.example_response || {}).filter(key => !/^\d+$/.test(key)).slice(0, 8), callTemplate: detail.call_template,
+    inputNote: input.note, outputFields, callTemplate: detail.call_template || endpoint.call_template,
     exampleOutput: detail.example_response ? JSON.stringify(detail.example_response).slice(0, 700) : undefined,
     siblings: (detail.siblings || []).slice(0, 2).map(({ id: siblingId, name, cost }) => ({ id: siblingId, name, cost })) };
 }
@@ -85,8 +101,15 @@ export function createRecipeHandler({ fetchImpl = fetch, generate = withGenerati
   return async function recipeHandler(req, res) {
     if (req.method !== "POST") { res.setHeader("Allow", "POST"); return res.status(405).json({ error: "Use POST to build a recipe." }); }
     const isExample = req.body?.example === true;
+    const addition = req.body?.addition;
+    if (addition !== undefined && !['verify-email', 'find-email'].includes(addition)) return res.status(400).json({ error: 'Choose verify-email or find-email.' });
+    const brief = req.body?.brief;
+    if (brief !== undefined && (!brief || typeof brief !== 'object' || !['treg', 'gmail', 'both'].includes(brief.source)
+      || typeof brief.audience !== 'string' || !brief.audience.trim() || brief.audience.length > MAX_USE_CASE_CHARS)) {
+      return res.status(400).json({ error: 'Provide an audience brief and choose treg, gmail or both as the source.' });
+    }
     const useCase = req.body?.useCase;
-    if (!isExample && (typeof useCase !== "string" || !useCase.trim() || useCase.length > MAX_USE_CASE_CHARS)) return res.status(400).json({ error: `Describe the use case in 1–${MAX_USE_CASE_CHARS} characters.` });
+    if (!isExample && !addition && (typeof useCase !== "string" || !useCase.trim() || useCase.length > MAX_USE_CASE_CHARS)) return res.status(400).json({ error: `Describe the use case in 1–${MAX_USE_CASE_CHARS} characters.` });
     const accept = req.headers?.accept || "";
     const streaming = accept.split(",").some((item) => item.trim().split(";")[0] === "application/x-ndjson");
     let streamEnded = false;
@@ -100,6 +123,20 @@ export function createRecipeHandler({ fetchImpl = fetch, generate = withGenerati
       res.flushHeaders?.();
     }
     try {
+      if (!isExample && (addition || brief)) {
+        emit({ type: 'status', message: addition ? 'Inspecting public catalog tools for this addition. No model or tool execution.'
+          : brief.source === 'gmail' ? 'Planning the Gmail steps for your agent. Your mailbox stays disconnected.'
+          : 'Drafting from public catalog metadata. Only generic capability terms leave the planner.' });
+        const intent = addition ? null : catalogIntent(useCase);
+        const query = addition ? addition === 'verify-email' ? 'verify email address' : 'find email address person company domain' : sourceSearch(useCase, brief, intent);
+        const ids = query ? await searchCatalog(query, fetchImpl, emit) : [];
+        const inspected = await inspectEndpoints([...new Set(ids)], fetchImpl, emit);
+        const candidates = [...inspected.values()];
+        const draft = addition ? additionDraft(addition, candidates) : sourceDraft(useCase, brief, intent, candidates, catalogDraft);
+        const recipe = { ...cleanRecipe(draft, inspected), mode: 'catalog', ...(brief && !addition ? { source: brief.source, goal: useCase.trim(), audience: brief.audience.trim() } : {}) };
+        if (streaming) return finishStream({ type: 'recipe', recipe });
+        return res.status(200).json(recipe);
+      }
       if (isExample) {
         emit({ type: "status", message: "Loading the prewritten sample and checking live catalog prices. No AI planning or tool execution." });
         await searchCatalog("extract web page content", fetchImpl, emit);

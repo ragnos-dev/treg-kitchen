@@ -1,6 +1,6 @@
 {
   "name": "treg-kitchen",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -10,7 +10,8 @@
   "scripts": {
     "dev": "node scripts/build.js && node --env-file-if-exists=.env.local scripts/dev.js",
     "test": "node --test",
-    "build": "node scripts/build.js"
+    "build": "node scripts/build.js",
+    "recipe": "node bin/treg-kitchen.js"
   },
   "dependencies": {
     "@vercel/blob": "2.9.0"
@@ -19,5 +20,8 @@
     "@vercel/cli-config": {
       "zod": "4.6.6"
     }
+  },
+  "bin": {
+    "treg-kitchen": "bin/treg-kitchen.js"
   }
 }
