@@ -1,6 +1,6 @@
 # treg-kitchen
 
-Describe a job, answer two questions and edit the proposed path. The sous-chef starts with the live Treg catalog and can include a future read-only Gmail step, a qualification skill and human review. The site generates instructions you can hand to your coding agent. Mailbox connections and recipe execution happen in that agent. Each handoff shows what the next step needs. Read the human TL;DR, inspect the path, and use **Copy for my agent** for the full instructions.
+Describe a job, answer two questions and edit the proposed path. The sous-chef starts with the live Treg catalog and can include a future read-only Gmail step, a qualification skill and human review. The site generates instructions you can hand to your coding agent. Mailbox connections and recipe execution happen in that agent. Hover, focus or tap a connection to trace what one step passes to the next. A single beam follows the connection, or a static highlight appears with reduced motion. Select a node to inspect its inputs, outputs, instructions and available pricing. Read the human TL;DR, inspect the path, and use **Copy for my agent** for the full instructions.
 
 [Open treg-kitchen](https://treg-kitchen.ragnos.io)
 
@@ -47,3 +47,5 @@ The original Vercel AI Gateway option remains available by configuring `KITCHEN_
 The app sends the use case to the selected planning model and short, generic searches to Treg. `POST /api/recipe` accepts `{"useCase":"..."}` or `{"example":true}`. JSON is the default response. Send `Accept: application/x-ndjson` to receive progress events followed by a recipe or an error. All catalog operations are public reads.
 
 MIT licensed. An independent tool built on Treg's public catalog.
+
+The graph uses the [Gmail product icon](https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_48dp.png) and [Treg’s project mark](https://github.com/superdesigndev/treg/blob/main/src/treg/web/favicon.svg) to identify planned steps. Each mark belongs to its respective owner.

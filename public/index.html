@@ -250,10 +250,10 @@ dialog::backdrop { background: #29272166; }
       <label class="volume-control" for="recipe-volume"><span class="detail-label">Recipe runs</span><input class="quantity-input" id="recipe-volume" type="number" min="1" max="1000000" step="1" value="1" inputmode="numeric"></label>
       <p class="cost-note" id="cost-note"></p>
     </div>
-    <p class="graph-help">Your recipe is the map. Choose a step to edit it, or use + on a handoff to add one.</p>
-    <div class="graph-workspace">
+    <p class="graph-help">Choose a node to see inside. Hover or tap a line to trace what it carries.</p>
+    <div class="graph-workspace" role="group" aria-label="Interactive recipe path">
       <div class="graph-map" id="recipe-graph"></div>
-      <section class="step-inspector" id="step-inspector" aria-labelledby="inspector-heading"><h2 class="inspector-heading" id="inspector-heading">Step ingredients</h2><ol class="steps" id="steps" role="list"></ol></section>
+      <section class="step-inspector" id="step-inspector" aria-labelledby="inspector-heading"><div class="inspector-nav"><h2 class="inspector-heading" id="inspector-heading" tabindex="-1">Inside this step</h2><button id="back-to-path" type="button" class="text-button">Back to path</button></div><ol class="steps" id="steps" role="list"></ol></section>
     </div>
     <section class="insert-menu" id="insert-menu" aria-labelledby="insert-title" hidden><h3 id="insert-title" tabindex="-1">Add a step</h3><p id="insert-context"></p><div class="insert-options"><button class="outline" type="button" data-addition="verify-email">Verify an email</button><button class="outline" type="button" data-addition="find-email">Find an email</button><button class="outline" type="button" data-addition="human">Human decision</button><button class="text-button" type="button" id="cancel-insert">Cancel</button></div><p id="insert-status" role="status"></p></section>
     <div class="gaps" id="gaps" hidden>
@@ -297,9 +297,17 @@ const audienceField = document.querySelector("#brief-audience");
 let selectedStep = 0;
 let insertIndex = 0;
 const graph = createRecipeGraph(document.querySelector("#recipe-graph"), {
-  select(index, alternatives) { selectedStep = index; render(); const target=stepsList.querySelector(alternatives ? '.step:not([hidden]) .alternative' : '.step:not([hidden]) .step-title'); target?.focus(); if (innerWidth < 701) target?.scrollIntoView({block:'center',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'}); },
+  select(index, alternatives) {
+    selectedStep = index;
+    render();
+    const target = alternatives ? stepsList.querySelector(".step:not([hidden]) .alternative") : document.querySelector("#inspector-heading");
+    target?.focus({preventScroll: true});
+    if (innerWidth < 701) document.querySelector("#step-inspector").scrollIntoView({block: "start"});
+    else if (alternatives) target?.scrollIntoView({block: "nearest"});
+  },
   insert(index) { insertIndex=index;const panel=document.querySelector('#insert-menu');panel.hidden=false;document.querySelector('#insert-context').textContent=`Insert ${index === recipe.steps.length ? 'after the last step' : `before “${recipe.steps[index].title}”`}. I’ll check the new tool’s required inputs.`;document.querySelector('#insert-title').focus();panel.scrollIntoView({block:'nearest',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'}); }
 });
+document.querySelector("#back-to-path").addEventListener("click", () => document.querySelector(`[data-node="${selectedStep}"]`)?.focus());
 function brief() { return {audience:audienceField.value.trim(),source:document.querySelector('[name="source"]:checked').value}; }
 peopleInput.addEventListener('input',()=>{const valid=positiveInteger(peopleInput.value);peopleInput.setCustomValidity(valid?'':'Enter a whole number from 1 to 1,000,000.');if(recipe&&valid){recipe.peoplePerRun=Number(peopleInput.value);updateCosts();}});
 document.querySelector('#cancel-insert').addEventListener('click',()=>{document.querySelector('#insert-menu').hidden=true;document.querySelector(`[data-node="${Math.min(insertIndex,recipe.steps.length-1)}"]`)?.focus();});
@@ -414,6 +422,7 @@ function render() {
   volumeInput.value = recipe.runs;
   volumeInput.setCustomValidity("");
   volumeInput.removeAttribute("aria-invalid");
+  document.querySelector("#inspector-heading").textContent = recipe.steps.length ? `Inside step ${selectedStep + 1} of ${recipe.steps.length}` : "Step details";
   stepsList.replaceChildren();
   recipe.steps.forEach((step, index) => {
     const item = document.createElement("li");
@@ -435,7 +444,6 @@ function render() {
       title.style.height = "auto";
       title.style.height = `${title.scrollHeight}px`;
     });
-    title.style.height = `${title.scrollHeight}px`;
     const controls = document.createElement("div");
     controls.className = "step-controls";
     const up = document.createElement("button");
@@ -476,6 +484,15 @@ function render() {
       human.className = "endpoint";
       human.textContent = step.kind === "gmail" ? "Gmail · your agent’s own connection" : step.kind === "skill" ? "Agent skill · no catalog tool" : "Human decision";
       toolLine.append(human);
+    }
+    if (step.kind === "skill" && step.skillUrl) {
+      const link = document.createElement("a");
+      link.className = "endpoint";
+      link.href = step.skillUrl;
+      link.target = "_blank";
+      link.rel = "noreferrer";
+      link.textContent = step.skillId;
+      toolLine.replaceChildren(link);
     }
     if (step.alternatives?.length) {
       const select = document.createElement("select");

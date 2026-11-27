@@ -29,6 +29,7 @@ export function createAnimatedBeam({
   duration = 1.2,
   delay = 0,
   animate = true,
+  manual = false,
   axis = "x",
 } = {}) {
   const id = `kitchen-beam-${++sequence}`;
@@ -45,7 +46,7 @@ export function createAnimatedBeam({
     }),
   );
   const reducedMotion = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-  if (!animate || reducedMotion) return group;
+  if (!animate || (reducedMotion && !manual)) return group;
   const defs = element("defs", {});
   const gradient = element("linearGradient", {
     id,
@@ -72,7 +73,7 @@ export function createAnimatedBeam({
         attributeName: axis === "y" ? attributeName.replace("x", "y") : attributeName,
         values: values.join(";"),
         dur: `${duration}s`,
-        begin: `${delay}s`,
+        begin: manual ? "indefinite" : `${delay}s`,
         repeatCount: 1,
         fill: "remove",
         calcMode: "spline",

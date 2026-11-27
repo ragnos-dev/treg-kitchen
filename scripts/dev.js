@@ -6,7 +6,7 @@ import recipeHandler from '../api/recipe.js';
 const publicDir = resolve('public');
 const mime = {
   '.css': 'text/css', '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json',
-  '.md': 'text/plain', '.png': 'image/png', '.webp': 'image/webp', '.woff2': 'font/woff2',
+  '.md': 'text/plain', '.png': 'image/png', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.woff2': 'font/woff2',
 };
 
 createServer(async (req, res) => {

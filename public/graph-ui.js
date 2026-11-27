@@ -8,72 +8,114 @@ export function createRecipeGraph(host, { select, insert }) {
     if (text != null) n.textContent = text;
     return n;
   };
-  function beam(connection) {
+  let dismissTrace = () => {};
+  document.addEventListener("pointerdown", (event) => {
+    if (!host.contains(event.target) || !event.target.closest(".handoff-trigger")) dismissTrace();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") dismissTrace();
+  });
+
+  function beam(trigger) {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("viewBox", "0 0 100 65");
+    svg.setAttribute("viewBox", "0 0 36 80");
     svg.setAttribute("preserveAspectRatio", "none");
     svg.setAttribute("aria-hidden", "true");
     svg.classList.add("handoff-beam");
-    svg.append(
-      createAnimatedBeam({
-        from: { x: 50, y: 0 },
-        to: { x: 50, y: 65 },
-        axis: "y",
-        pathColor: "#73726c",
-        pathWidth: 0.35,
-        pathOpacity: 0.6,
-        gradientStartColor: "#b53c2c",
-        gradientStopColor: "#d5a16c",
-        duration: 1.1,
-      }),
+    svg.append(createAnimatedBeam({
+      d: "M 18 0 C 18 22, 9 24, 9 40 S 18 61, 18 80",
+      axis: "y",
+      pathColor: "currentColor",
+      pathWidth: 2,
+      pathOpacity: 0.75,
+      gradientStartColor: "#ad3728",
+      gradientStopColor: "#ffb45f",
+      duration: 0.9,
+      manual: true,
+    }));
+    trigger.prepend(svg);
+    return () => {
+      if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        svg.querySelectorAll("animate").forEach((animation) => animation.beginElement());
+      }
+    };
+  }
+
+  function connection(recipe, index) {
+    const previous = recipe.steps[index - 1];
+    const next = recipe.steps[index];
+    const source = previous?.title || "Your brief";
+    const destination = next?.title || "Ready for your agent";
+    const output = previous?.output || (previous ? "Previous step’s result" : "Audience, goal & available input");
+    const item = el("li", "graph-connection");
+    const trigger = el("button", "handoff-trigger");
+    trigger.type = "button";
+    trigger.setAttribute("aria-expanded", "false");
+    trigger.setAttribute("aria-label", `Trace handoff from ${source} to ${destination}: ${output}`);
+    const pulse = beam(trigger);
+    trigger.append(el("span", "handoff-label", output));
+    const preview = el("span", "handoff-preview");
+    preview.id = `handoff-preview-${index}`;
+    trigger.setAttribute("aria-controls", preview.id);
+    preview.hidden = true;
+    preview.append(
+      el("span", "handoff-from", `From ${source}`),
+      el("strong", "handoff-to", next ? `Step ${index + 1} · ${destination}` : destination),
+      el("span", "handoff-input", `Passes: ${output}`),
+      ...(next?.input ? [el("span", "handoff-input", `Needs: ${next.input}`)] : []),
     );
-    connection.prepend(svg);
+    trigger.append(preview);
+    const show = () => {
+      if (!preview.hidden) return;
+      dismissTrace();
+      preview.hidden = false;
+      item.classList.add("tracing");
+      trigger.setAttribute("aria-expanded", "true");
+      const ends = [index - 1, index].map(i => host.querySelector(`[data-node="${i}"]`)).filter(Boolean);
+      ends.forEach(node => node.classList.add("trace-end"));
+      pulse();
+      dismissTrace = () => {
+        preview.hidden = true;
+        item.classList.remove("tracing");
+        trigger.setAttribute("aria-expanded", "false");
+        ends.forEach(node => node.classList.remove("trace-end"));
+        dismissTrace = () => {};
+      };
+    };
+    trigger.addEventListener("pointerenter", event => { if (event.pointerType !== "touch") show(); });
+    trigger.addEventListener("pointerleave", () => {
+      if (!preview.hidden && document.activeElement !== trigger) dismissTrace();
+    });
+    trigger.addEventListener("focus", show);
+    trigger.addEventListener("click", show);
+    trigger.addEventListener("blur", () => { if (!preview.hidden) dismissTrace(); });
+
+    const add = el("button", "connection-add", "+");
+    add.type = "button";
+    add.setAttribute("aria-label", next ? `Add a step before step ${index + 1}` : "Add a final step");
+    add.title = "Add a step here";
+    add.addEventListener("click", () => insert(index, add));
+    item.append(trigger, add);
+    return item;
   }
   function kind(step) {
     if (step.kind === "gmail") return ["teal", "Gmail history"];
     if (step.kind === "skill") return ["coral", "Agent skill"];
     if (!step.endpointId) return ["pink", "Human decision"];
-    if (/verif|check|valid/i.test(`${step.title} ${step.endpointId}`)) return ["amber", "Verification"];
+    if (/verif|valid/i.test(step.endpointId)) return ["amber", "Treg verification"];
     return ["teal", "Treg tool"];
   }
   function draw(recipe, active = selected) {
     selected = Math.max(0, Math.min(active, recipe.steps.length - 1));
+    dismissTrace();
     host.replaceChildren();
-    const legend = el("div", "graph-legend");
-    [
-      ["teal", "Source / tool"],
-      ["coral", "Agent work"],
-      ["pink", "Human decision"],
-      ["amber", "Check"],
-    ].forEach(([color, label]) => {
-      const n = el("span", `legend-${color}`, label);
-      legend.append(n);
-    });
-    host.append(legend);
     const flow = el("ol", "graph-flow");
     flow.setAttribute("aria-label", "Recipe sequence. Choose a step to inspect and edit.");
     flow.setAttribute("role", "list");
     const start = el("li", "graph-terminal", "Your brief & inputs");
     flow.append(start);
     recipe.steps.forEach((step, index) => {
-      const connector = el("li", "graph-connection");
-      connector.append(
-        el(
-          "span",
-          "handoff-label",
-          index
-            ? recipe.steps[index - 1].output || "Previous step’s result"
-            : "Audience, goal & available input",
-        ),
-      );
-      const add = el("button", "connection-add", "+");
-      add.type = "button";
-      add.setAttribute("aria-label", `Add a step before step ${index + 1}`);
-      add.title = "Add a step here";
-      add.addEventListener("click", () => insert(index, add));
-      connector.append(add);
-      beam(connector);
-      flow.append(connector);
+      flow.append(connection(recipe, index));
       const row = el("li", "graph-row");
       const [color, label] = kind(step);
       const node = el(
@@ -84,20 +126,22 @@ export function createRecipeGraph(host, { select, insert }) {
       node.dataset.node = index;
       node.setAttribute("aria-pressed", String(index === selected));
       node.setAttribute("aria-controls", "step-inspector");
-      node.append(
+      const mark = el("span", "node-mark");
+      mark.setAttribute("aria-hidden", "true");
+      if (step.kind === "gmail" || step.endpointId) {
+        const logo = el("img");
+        logo.src = step.kind === "gmail" ? "/marks/gmail.png" : "/marks/treg.svg";
+        logo.alt = "";
+        mark.append(logo);
+      } else {
+        mark.textContent = step.kind === "skill" ? "{}" : "◇";
+      }
+      const name = el("span", "node-copy");
+      name.append(
         el("span", "node-type", `${String(index + 1).padStart(2, "0")} · ${label}`),
         el("strong", "node-title", step.title),
-        el(
-          "span",
-          "node-subtitle",
-          step.endpointId ||
-            (step.kind === "gmail"
-              ? "Your agent connects Gmail"
-              : step.kind === "skill"
-                ? "Uses your agent"
-                : "You choose what moves forward"),
-        ),
       );
+      node.append(mark, name);
       node.addEventListener("click", () => {
         selected = index;
         select(index);
@@ -105,15 +149,7 @@ export function createRecipeGraph(host, { select, insert }) {
       row.append(node);
       if (step.alternatives?.length) {
         const branch = el("div", "graph-branch");
-        branch.append(
-          el("span", "branch-condition", "If input or provider differs"),
-          el(
-            "span",
-            "branch-node",
-            `${step.alternatives[0].endpointId}${step.alternatives.length > 1 ? ` + ${step.alternatives.length - 1} more` : ""}`,
-          ),
-        );
-        const view = el("button", "branch-view", "Inspect options");
+        const view = el("button", "branch-view", `Inspect ${step.alternatives.length} alternative${step.alternatives.length === 1 ? "" : "s"}`);
         view.type = "button";
         view.addEventListener("click", () => {
           selected = index;
@@ -124,15 +160,7 @@ export function createRecipeGraph(host, { select, insert }) {
       }
       flow.append(row);
     });
-    const end = el("li", "graph-connection");
-    end.append(el("span", "handoff-label", recipe.steps.at(-1)?.output || "Reviewed result"));
-    const add = el("button", "connection-add", "+");
-    add.type = "button";
-    add.setAttribute("aria-label", "Add a final step");
-    add.addEventListener("click", () => insert(recipe.steps.length, add));
-    end.append(add);
-    beam(end);
-    flow.append(end, el("li", "graph-terminal", "Ready for your agent"));
+    flow.append(connection(recipe, recipe.steps.length), el("li", "graph-terminal", "Ready for your agent"));
     host.append(flow);
   }
   return { draw };
