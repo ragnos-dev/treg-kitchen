@@ -27,16 +27,21 @@ Turn a use case into a recipe someone can inspect and edit. Plan calls only. Nev
 
    Use the returned input contract, price, availability details, examples and sibling endpoints. If the search response includes several possible jobs, keep the one that matches the requested output. A listing or price alone does not prove that a user's Treg team can call it.
 5. Check the whole sequence. Each tool's required input must come from what the person supplied or a preceding step's stated output. If they do not connect, add a step, request the missing input, or explain the gap. Do not invent endpoint IDs or result fields.
-6. Present an editable recipe. For every step include its purpose, exact endpoint ID and live catalog link, why it fits, required input, expected output, and a suitable alternative when available. Label assumptions and user decisions. Explain when no catalog result is a safe fit.
+6. Set a positive integer quantity for each step, meaning calls per recipe run, and a positive integer `runs` for the planned volume. Default both to one when unspecified. Human decisions remain explicit steps with a human-action quantity; their time is unpriced. Never assume a single call processes all items in the workflow.
+7. Estimate downstream tool costs from inspected catalog metadata, independently of the cost of generating this recipe. Retain the raw catalog `cost` object in each tool step's `catalog` field. Use `cost.usd` for catalog-normalized dollars; a credit `value` is not a USD amount. A flat per-call rate can be multiplied by quantity and runs. Treat `varies` routing prices and notes describing prices across multiple providers as starting prices. Per-success projections assume every planned call produces a chargeable result. Usage-settled tables and their `fallback` holds are variable, not exact charges or guaranteed ceilings. For table-settled prices, retain a range from `usd_min` to `usd` when both exist. Non-call units, BYOK/account pricing, missing USD conversions and absent metadata remain variable or unknown. Explicit free catalog rates may be zero, with account quota assumptions stated. Never turn missing prices into zero.
+8. Present an editable recipe. For every step include its purpose, exact endpoint ID and live catalog link, why it fits, required input, expected output, and a suitable alternative when available. Label assumptions and user decisions. Explain when no catalog result is a safe fit.
 
 ## Recipe format
 
 ```json
 {
   "title": "A short name for the workflow",
+  "runs": 1,
   "steps": [
     {
       "title": "Step purpose",
+      "quantity": 1,
+      "catalog": { "id": "exact.id.from.catalog", "cost": {} },
       "instructions": "What the agent should do with this endpoint",
       "endpointId": "exact.id.from.catalog",
       "why": "How the endpoint matches this job and the available inputs",
@@ -48,6 +53,8 @@ Turn a use case into a recipe someone can inspect and edit. Plan calls only. Nev
   "gaps": []
 }
 ```
+
+Export the edited quantities, run volume, cost per run, cost at the selected volume, price provenance and assumptions alongside the instructions and endpoint links. Label known subtotals separately when any tool cost is unknown; exclude human time explicitly. State that retries, extra usage, taxes and account subscriptions are not included. Recheck prices and request parameters before execution. A recipe is a planning estimate, not a quote or a spending authorization.
 
 Keep recipes to six steps or fewer. A step without an endpoint is permitted only for a real human decision, with the reason in `why`. Never present a human decision as an API call.
 

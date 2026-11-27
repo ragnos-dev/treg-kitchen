@@ -74,6 +74,8 @@ test('Redis admits concurrent reservations only up to the shared daily ceiling',
       const command = JSON.parse(options.body).map(String);
       return Response.json({ result: Number(await redis(...command)) });
     };
+    const today = Math.floor(Date.now() / 86_400_000);
+    await redis('HSET', 'treg-kitchen:production:daily', 'version', '1', 'day', String(today), 'spent', '0', 'lifetimeSpent', '0');
     const admitted = Math.floor(dailyBudget / recipeReservation);
     const results = await Promise.allSettled(Array.from({ length: admitted + 7 }, () => reserveRecipe({ env, fetcher })));
     assert.equal(results.filter((result) => result.status === 'fulfilled').length, admitted);
@@ -85,4 +87,29 @@ test('Redis admits concurrent reservations only up to the shared daily ceiling',
     await stopped;
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+
+test('direct OpenAI uses only the scoped project and reserves before dispatch', async () => {
+  const scoped = { ...env, KITCHEN_MODEL_PROVIDER: 'openai', KITCHEN_OPENAI_ORG_ID: 'test-org',
+    KITCHEN_OPENAI_PROJECT_ID: 'test-project', KITCHEN_OPENAI_API_KEY: 'test-api-key' };
+  for (const key of ['KITCHEN_OPENAI_API_KEY', 'KITCHEN_OPENAI_ORG_ID', 'KITCHEN_OPENAI_PROJECT_ID']) {
+    await assert.rejects(withGenerationBudget(() => assert.fail(), { env: { ...scoped, [key]: '' },
+      fetcher: () => assert.fail('must fail before networking') }), { status: 503 });
+  }
+  const calls = [];
+  const fetcher = (url, options) => {
+    calls.push(url);
+    if (url === env.KITCHEN_REDIS_URL) return Response.json({ result: 1 });
+    assert.equal(options.headers.Authorization, 'Bearer test-api-key');
+    assert.equal(options.headers['OpenAI-Project'], 'test-project');
+    assert.equal(options.headers['OpenAI-Organization'], 'test-org');
+    const body = JSON.parse(options.body);
+    assert.equal(body.model, 'gpt-4.1-nano-2025-04-14');
+    assert.equal(body.service_tier, 'default');
+    assert.equal(body.providerOptions, undefined);
+    return Response.json({ choices: [{ message: { content: '{"ok":true}' } }] });
+  };
+  assert.deepEqual(await withGenerationBudget(complete => complete(messages, 150), { env: scoped, fetcher }), { ok: true });
+  assert.deepEqual(calls, [env.KITCHEN_REDIS_URL, 'https://api.openai.com/v1/chat/completions']);
 });
