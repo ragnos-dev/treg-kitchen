@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f6f2e9">
+<meta name="description" content="Describe a job and get an editable plan from Treg's live tool catalog.">
+<title>treg-kitchen · A recipe for the right tools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;650;700&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: light;
+  --paper: #f6f2e9;
+  --surface: #fffcf5;
+  --ink: #292721;
+  --muted: #6e6a60;
+  --tomato: #b53c2c;
+  --tomato-dark: #912e22;
+  --line: #e6e0d4;
+  --soft: #eee9de;
+  --serif: "Instrument Serif", "Georgia", serif;
+  --sans: "DM Sans", "Helvetica Neue", sans-serif;
+  --mono: "IBM Plex Mono", "SFMono-Regular", monospace;
+  font-family: var(--sans);
+  color: var(--ink);
+  background: var(--paper);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; }
+button, input, textarea { font: inherit; }
+a { color: inherit; }
+button { color: inherit; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible, select:focus-visible {
+  outline: 3px solid #9a4a37; outline-offset: 3px;
+}
+.shell { width: min(1220px, calc(100% - 64px)); margin: 0 auto; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+header { height: 88px; display: flex; align-items: center; justify-content: space-between; }
+.wordmark { text-decoration: none; font-size: 16px; font-weight: 700; letter-spacing: -.065em; }
+.header-links { display: flex; align-items: center; gap: 26px; }
+.header-links a { color: var(--muted); font-size: 13px; text-decoration-color: transparent; text-underline-offset: 4px; transition: text-decoration-color .18s; }
+.header-links a:hover { text-decoration-color: currentColor; }
+button { cursor: pointer; }
+.text-button {
+  background: transparent; border: 0; padding: 12px 0; font-size: 13px; font-weight: 650;
+  text-underline-offset: 4px; min-height: 44px;
+}
+.text-button:hover { text-decoration: underline; }
+main { padding: 50px 0 96px; }
+.intro { max-width: 760px; margin: 0 auto; text-align: center; }
+h1 {
+  font: normal clamp(52px, 6.9vw, 88px)/.94 var(--serif);
+  letter-spacing: -.035em; max-width: 730px; margin: 0 auto 18px;
+}
+.intro-copy { font-size: 15px; line-height: 1.65; color: var(--muted); margin: 0 auto; max-width: 490px; }
+.compose { margin: 42px auto 0; max-width: 760px; }
+.field-label { display: block; font-size: 12px; font-weight: 650; margin: 0 0 10px 2px; }
+textarea {
+  display: block; width: 100%; min-height: 136px; resize: vertical; padding: 18px 20px;
+  background: var(--surface); border: 1px solid #ddd6c9; border-radius: 12px;
+  color: var(--ink); font-size: 15px; line-height: 1.55; box-shadow: 0 1px 2px #29272108;
+}
+textarea::placeholder { color: #8b857a; }
+.actions { display: flex; align-items: center; gap: 22px; margin-top: 17px; flex-wrap: wrap; }
+.primary {
+  min-height: 48px; border: 0; border-radius: 7px; padding: 0 22px; background: var(--tomato);
+  color: white; font-size: 13px; font-weight: 700; box-shadow: 0 2px 4px #65221520;
+  transition: background .18s, transform .18s, box-shadow .18s;
+}
+.primary:hover { background: var(--tomato-dark); transform: translateY(-1px); box-shadow: 0 5px 13px #65221520; }
+.primary:disabled { cursor: progress; opacity: .74; transform: none; }
+.example-link { margin-left: auto; }
+.status { margin: 14px 0 0; min-height: 23px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+.status.error { color: #922c1e; }
+.status.success { color: #486342; }
+.still-life {
+  position: absolute; left: max(18px, calc((100vw - 1390px) / 2)); top: 300px;
+  width: clamp(220px, 20vw, 285px); aspect-ratio: 1.5; object-fit: cover; pointer-events: none;
+  opacity: .83; mix-blend-mode: multiply; mask-image: radial-gradient(ellipse at center, #000 48%, transparent 76%);
+}
+.recipe { max-width: 960px; margin: 39px auto 0; background: var(--surface); border: 1px solid #e8e1d5; border-radius: 15px; box-shadow: 0 12px 40px #463b2a0a; overflow: hidden; }
+.recipe-head { padding: 25px 30px 20px; display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.recipe-eyebrow { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.recipe-title { display: block; width: min(100%, 590px); min-height: 40px; margin-top: 8px; border: 0; border-radius: 4px; padding: 0; background: transparent; font: 36px/1.08 var(--serif); letter-spacing: -.02em; resize: none; field-sizing: content; overflow-wrap: anywhere; }
+.recipe-tools { display: flex; gap: 8px; align-items: center; }
+.outline {
+  display: inline-flex; justify-content: center; align-items: center; min-height: 44px; padding: 0 13px;
+  border-radius: 6px; border: 1px solid #d7d0c4; background: transparent; font-size: 12px; font-weight: 650;
+}
+.outline:hover { background: var(--soft); }
+.steps { list-style: none; margin: 0; padding: 0 30px; counter-reset: recipe; }
+.recipe > #recipe-status { margin: 0; padding: 0 30px 12px; }
+.step { counter-increment: recipe; display: grid; grid-template-columns: 48px minmax(0,1fr); gap: 14px; padding: 22px 0; border-top: 1px solid var(--line); }
+.step:before { content: counter(recipe, decimal-leading-zero); color: var(--tomato); font: 24px/1 var(--serif); padding-top: 2px; }
+.step-main { min-width: 0; }
+.step-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.step-title { display: block; width: 100%; min-height: 34px; border: 0; padding: 0; border-radius: 3px; background: transparent; font: 24px/1.1 var(--serif); resize: none; field-sizing: content; overflow-wrap: anywhere; }
+.step-controls { display: flex; flex: none; gap: 4px; }
+.icon-button {
+  border: 0; background: transparent; border-radius: 5px; min-width: 44px; min-height: 44px;
+  padding: 0 8px; color: var(--muted); font-size: 11px; font-weight: 600;
+}
+.icon-button:hover { color: var(--ink); background: var(--soft); }
+.icon-button:disabled { opacity: .32; cursor: default; }
+.tool-line { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 14px 0 16px; }
+.endpoint { display: inline-block; background: #f0ece3; border-radius: 4px; padding: 6px 8px; color: #4f4a40; font: 11px/1.4 var(--mono); overflow-wrap: anywhere; text-decoration: none; }
+.endpoint:hover { text-decoration: underline; }
+.alternative { min-height: 36px; max-width: 240px; padding: 0 26px 0 9px; background-color: transparent; border: 1px solid #e1dbcf; border-radius: 5px; color: var(--muted); font-size: 11px; }
+.detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 22px; }
+.field:has([data-field="instructions"]) { grid-column: 1 / -1; }
+.detail-label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.detail-input { display: block; width: 100%; border: 0; border-radius: 4px; padding: 0; background: transparent; color: var(--ink); font-size: 13px; line-height: 1.55; resize: vertical; field-sizing: content; }
+textarea.detail-input { min-height: 48px; }
+.gaps { margin: 0 30px 20px; padding: 15px 17px; border-radius: 8px; background: #f4eee3; }
+.gaps h3 { margin: 0 0 8px; font-size: 12px; }
+.gaps ul { margin: 0; padding-left: 18px; color: #625d52; font-size: 12px; line-height: 1.55; }
+.recipe-foot { padding: 0 30px 25px; display: flex; justify-content: space-between; gap: 16px; }
+.recipe-foot .text-button { color: var(--muted); }
+dialog { width: min(720px, calc(100% - 32px)); border: 1px solid var(--line); border-radius: 12px; padding: 20px; color: var(--ink); background: var(--surface); box-shadow: 0 22px 70px #29272140; }
+dialog::backdrop { background: #29272166; }
+.copy-dialog-title { margin: 0 0 12px; font: 26px/1.1 var(--serif); }
+.copy-dialog textarea { min-height: 40vh; font: 12px/1.55 var(--mono); }
+.copy-dialog-actions { display: flex; justify-content: flex-end; gap: 14px; margin-top: 14px; }
+[hidden] { display: none !important; }
+@media (max-width: 1050px) { .still-life { display: none; } }
+@media (max-width: 700px) {
+  .shell { width: min(100% - 36px, 540px); }
+  header { height: 72px; }
+  .header-links { gap: 14px; }
+  .header-links a { font-size: 12px; }
+  main { padding: 49px 0 64px; }
+  h1 { max-width: 360px; font-size: clamp(50px, 12.6vw, 62px); text-wrap: balance; }
+  .intro-copy { font-size: 14px; max-width: 360px; }
+  .compose { margin-top: 31px; }
+  textarea { min-height: 129px; }
+  .actions { gap: 8px 17px; }
+  .actions .primary { width: 100%; }
+  .example-link { margin-left: 0; }
+  .still-life { top: auto; bottom: 10px; width: 112px; opacity: .18; }
+  .recipe { margin-top: 29px; border-radius: 12px; }
+  .recipe-head { padding: 21px 19px 16px; flex-direction: column; align-items: stretch; gap: 14px; }
+  .recipe-title { font-size: 33px; }
+  .recipe-tools { align-self: flex-end; }
+  .recipe > #recipe-status { padding: 0 19px 12px; }
+  .steps { padding: 0 19px; }
+  .step { grid-template-columns: 32px minmax(0,1fr); gap: 10px; padding: 20px 0; }
+  .step:before { font-size: 21px; }
+  .step-title { font-size: 22px; }
+  .step-top { display: block; }
+  .step-controls { margin-top: 8px; }
+  .step-controls { gap: 0; }
+  .icon-button { min-width: 34px; min-height: 44px; padding: 0 7px; }
+  .tool-line { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .detail-grid { grid-template-columns: 1fr; gap: 15px; }
+  .detail-input { font-size: 14px; }
+  textarea.detail-input { min-height: 48px; }
+  .gaps { margin-inline: 19px; }
+  .recipe-foot { padding: 0 19px 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+</style>
+</head>
+<body>
+<header class="shell">
+  <a class="wordmark" href="/" aria-label="treg-kitchen home">treg-kitchen</a>
+  <nav class="header-links" aria-label="Project">
+    <a href="https://github.com/ragnos-dev/treg-kitchen" target="_blank" rel="noreferrer">GitHub</a>
+  </nav>
+</header>
+<main class="shell">
+  <img class="still-life" src="/images/recipe-still-life.webp" alt="" aria-hidden="true">
+  <section class="intro" aria-labelledby="hero-title">
+    <h1 id="hero-title">A recipe for the right tools.</h1>
+    <p class="intro-copy">Describe the job. Get an editable plan from Treg’s live tool catalog.</p>
+  </section>
+  <form class="compose" id="recipe-form">
+    <label class="field-label" for="use-case">Your use case</label>
+    <textarea id="use-case" maxlength="1200" placeholder="Tell us your goal and what you already have."></textarea>
+    <div class="actions">
+      <button class="primary" id="build-button" type="submit">Build a recipe</button>
+      <button class="text-button" id="copy-skill" type="button">Copy skill</button>
+      <button class="text-button example-link" id="try-example" type="button">Try an example</button>
+    </div>
+    <p class="status" id="status" role="status" aria-live="polite" aria-atomic="true"></p>
+  </form>
+  <section class="recipe" id="recipe" aria-label="Editable recipe" hidden>
+    <div class="recipe-head">
+      <div>
+        <div class="recipe-eyebrow">Your recipe</div>
+        <label class="sr-only" for="recipe-title">Recipe title</label>
+        <textarea class="recipe-title" id="recipe-title" rows="1"></textarea>
+      </div>
+      <div class="recipe-tools">
+        <button class="outline" id="copy-recipe" type="button">Copy recipe</button>
+      </div>
+    </div>
+    <p class="status" id="recipe-status" role="status" aria-live="polite" aria-atomic="true"></p>
+    <ol class="steps" id="steps"></ol>
+    <div class="gaps" id="gaps" hidden>
+      <h3>Open questions</h3>
+      <ul id="gap-list"></ul>
+    </div>
+  </section>
+</main>
+<dialog class="copy-dialog" id="copy-dialog" aria-labelledby="copy-dialog-title">
+  <h2 class="copy-dialog-title" id="copy-dialog-title">Copy the text</h2>
+  <p class="status" id="copy-dialog-help">The text is selected. Copy it, then close this window.</p>
+  <textarea id="copy-dialog-text" aria-label="Text to copy" readonly></textarea>
+  <div class="copy-dialog-actions"><button class="text-button" id="copy-dialog-close" type="button">Close</button></div>
+</dialog>
+<script type="module">
+import { recipeMarkdown } from "/recipe-format.js";
+
+const example = {
+  title: "Check a company claim",
+  gaps: [],
+  steps: [
+    {
+      title: "Read the source page",
+      instructions: "Fetch the public page and return its clean text with the source URL.",
+      endpointId: "treg.web.extract",
+      endpointUrl: "https://treg.to/catalog/endpoints/treg.web.extract",
+      why: "This routed job returns page content and identifies which provider served the request.",
+      input: "A public page URL.",
+      output: "Page text, page URL, and returned source details.",
+      alternatives: [{
+        endpointId: "firecrawl.web.scrape",
+        endpointUrl: "https://treg.to/catalog/endpoints/firecrawl.web.scrape",
+        why: "Choose this provider-specific endpoint when you need direct Firecrawl behavior.",
+        input: "A public page URL.",
+        output: "Page text and page metadata."
+      }]
+    },
+    {
+      title: "Compare the claim with the source",
+      instructions: "Quote the exact sentence supporting the claim. Link the page. If the page does not support it, explain the gap and leave the claim unverified.",
+      endpointId: null,
+      endpointUrl: null,
+      why: "This is an evidence and judgment step. The extracted page text provides what is needed without another lookup call.",
+      input: "The claim and the returned page text.",
+      output: "A cited supporting passage, or an explicit statement that support was not found.",
+      alternatives: []
+    }
+  ]
+};
+const form = document.querySelector("#recipe-form");
+const useCaseField = document.querySelector("#use-case");
+const buildButton = document.querySelector("#build-button");
+const status = document.querySelector("#status");
+const recipePanel = document.querySelector("#recipe");
+const recipeTitle = document.querySelector("#recipe-title");
+const stepsList = document.querySelector("#steps");
+const recipeStatus = document.querySelector("#recipe-status");
+const gapPanel = document.querySelector("#gaps");
+const gapList = document.querySelector("#gap-list");
+const copyDialog = document.querySelector("#copy-dialog");
+const copyDialogText = document.querySelector("#copy-dialog-text");
+let priorCopyButton = null;
+let recipe = null;
+let busy = false;
+
+function setStatus(message, tone = "") {
+  status.textContent = message;
+  status.className = ["status", tone].filter(Boolean).join(" ");
+}
+function setRecipeStatus(message, tone = "") {
+  recipeStatus.textContent = message;
+  recipeStatus.className = ["status", tone].filter(Boolean).join(" ");
+}
+function syncTitle() {
+  if (recipe) recipe.title = recipeTitle.value.slice(0, 160);
+}
+function textAreaField(labelText, value, attribute) {
+  const label = document.createElement("label");
+  label.className = "field";
+  const caption = document.createElement("span");
+  caption.className = "detail-label";
+  caption.textContent = labelText;
+  const field = document.createElement("textarea");
+  field.className = "detail-input";
+  field.value = value || "";
+  field.rows = Math.max(2, Math.min(5, Math.ceil((field.value.length || 70) / 85)));
+  field.dataset.field = attribute;
+  field.setAttribute("aria-label", labelText);
+  label.append(caption, field);
+  return label;
+}
+function render() {
+  recipePanel.hidden = !recipe;
+  if (!recipe) return;
+  recipeTitle.value = recipe.title;
+  stepsList.replaceChildren();
+  recipe.steps.forEach((step, index) => {
+    const item = document.createElement("li");
+    item.className = "step";
+    item.dataset.index = String(index);
+    const content = document.createElement("div");
+    content.className = "step-main";
+
+    const top = document.createElement("div");
+    top.className = "step-top";
+    const title = document.createElement("textarea");
+    title.className = "step-title";
+    title.value = step.title;
+    title.rows = 1;
+    title.dataset.field = "title";
+    title.setAttribute("aria-label", `Step ${index + 1} title`);
+    title.addEventListener("input", () => {
+      title.style.height = "auto";
+      title.style.height = `${title.scrollHeight}px`;
+    });
+    title.style.height = `${title.scrollHeight}px`;
+    const controls = document.createElement("div");
+    controls.className = "step-controls";
+    const up = document.createElement("button");
+    up.className = "icon-button";
+    up.type = "button";
+    up.dataset.action = "up";
+    up.disabled = index === 0;
+    up.setAttribute("aria-label", `Move step ${index + 1} up`);
+    up.textContent = "Move up";
+    const down = document.createElement("button");
+    down.className = "icon-button";
+    down.type = "button";
+    down.dataset.action = "down";
+    down.disabled = index === recipe.steps.length - 1;
+    down.setAttribute("aria-label", `Move step ${index + 1} down`);
+    down.textContent = "Move down";
+    const remove = document.createElement("button");
+    remove.className = "icon-button";
+    remove.type = "button";
+    remove.dataset.action = "remove";
+    remove.setAttribute("aria-label", `Remove step ${index + 1}`);
+    remove.textContent = "Remove";
+    controls.append(up, down, remove);
+    top.append(title, controls);
+
+    const toolLine = document.createElement("div");
+    toolLine.className = "tool-line";
+    if (step.endpointId && step.endpointUrl) {
+      const endpoint = document.createElement("a");
+      endpoint.className = "endpoint";
+      endpoint.href = step.endpointUrl;
+      endpoint.target = "_blank";
+      endpoint.rel = "noreferrer";
+      endpoint.textContent = step.endpointId;
+      toolLine.append(endpoint);
+    } else {
+      const human = document.createElement("span");
+      human.className = "endpoint";
+      human.textContent = "Human decision";
+      toolLine.append(human);
+    }
+    if (step.alternatives?.length) {
+      const select = document.createElement("select");
+      select.className = "alternative";
+      select.dataset.action = "alternative";
+      select.setAttribute("aria-label", `Alternative tool for step ${index + 1}`);
+      const current = document.createElement("option");
+      current.value = "";
+      current.textContent = "Change tool";
+      select.append(current);
+      step.alternatives.forEach((alternative, altIndex) => {
+        const option = document.createElement("option");
+        option.value = String(altIndex);
+        option.textContent = alternative.endpointId;
+        select.append(option);
+      });
+      toolLine.append(select);
+    }
+    const detailGrid = document.createElement("div");
+    detailGrid.className = "detail-grid";
+    detailGrid.append(
+      textAreaField("Why this tool", step.why, "why"),
+      textAreaField("Needs", step.input, "input"),
+      textAreaField("Returns", step.output, "output"),
+      textAreaField("Instructions", step.instructions, "instructions")
+    );
+    content.append(top, toolLine, detailGrid);
+    item.append(content);
+    stepsList.append(item);
+  });
+  gapList.replaceChildren();
+  recipe.gaps.forEach((gap) => {
+    const row = document.createElement("li");
+    row.textContent = gap;
+    gapList.append(row);
+  });
+  gapPanel.hidden = recipe.gaps.length === 0;
+}
+
+recipeTitle.addEventListener("input", syncTitle);
+stepsList.addEventListener("input", (event) => {
+  const field = event.target.closest("[data-field]");
+  const row = field?.closest(".step");
+  if (!field || !row || !recipe) return;
+  recipe.steps[Number(row.dataset.index)][field.dataset.field] = field.value;
+});
+stepsList.addEventListener("change", (event) => {
+  const select = event.target.closest('[data-action="alternative"]');
+  if (!select || select.value === "" || !recipe) return;
+  const row = select.closest(".step");
+  const index = Number(row.dataset.index);
+  const step = recipe.steps[index];
+  const chosen = step.alternatives[Number(select.value)];
+  if (!chosen) return;
+  const previousTool = step.endpointId;
+  step.alternatives = [
+    { endpointId: step.endpointId, endpointUrl: step.endpointUrl, why: step.why, input: step.input, output: step.output },
+    ...step.alternatives.filter((_, optionIndex) => optionIndex !== Number(select.value))
+  ];
+  Object.assign(step, chosen);
+  const reviewNote = `Review this step’s instructions for ${chosen.endpointId}. The tool changed from ${previousTool}. Confirm they still match the new tool.`;
+  recipe.gaps = [...new Set([...(recipe.gaps || []), reviewNote])];
+  select.focus();
+  render();
+  stepsList.querySelector(`.step[data-index="${index}"] .alternative`)?.focus();
+});
+stepsList.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-action]");
+  const row = button?.closest(".step");
+  if (!button || !row || !recipe) return;
+  const index = Number(row.dataset.index);
+  if (button.dataset.action === "remove") {
+    recipe.steps.splice(index, 1);
+    render();
+    if (!recipe.steps.length) {
+      setStatus("All steps removed. Describe the recipe again, or build a new one.");
+      useCaseField.focus();
+    } else {
+      stepsList.querySelector(`.step[data-index="${Math.min(index, recipe.steps.length - 1)}"] .step-title`)?.focus();
+    }
+    return;
+  }
+  const neighbor = button.dataset.action === "up" ? index - 1 : index + 1;
+  if (neighbor < 0 || neighbor >= recipe.steps.length) return;
+  [recipe.steps[index], recipe.steps[neighbor]] = [recipe.steps[neighbor], recipe.steps[index]];
+  render();
+  const movedControl = stepsList.querySelector(`.step[data-index="${neighbor}"] [data-action="${button.dataset.action}"]`);
+  if (movedControl && !movedControl.disabled) movedControl.focus();
+  else stepsList.querySelector(`.step[data-index="${neighbor}"] .step-title`)?.focus();
+});
+document.querySelector("#try-example").addEventListener("click", () => {
+  useCaseField.value = "Check whether a public webpage supports a claim. I have the page URL and claim.";
+  recipe = structuredClone(example);
+  render();
+  setStatus("Example loaded.", "success");
+  setRecipeStatus("Edit any step or copy the recipe.", "success");
+  recipePanel.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
+  recipeTitle.focus({ preventScroll: true });
+});
+document.querySelector("#copy-recipe").addEventListener("click", async (event) => {
+  if (!recipe) return;
+  const button = event.currentTarget;
+  syncTitle();
+  try {
+    await copyWithTimeout(recipeMarkdown(recipe));
+    setRecipeStatus("Recipe copied with your edits.", "success");
+  } catch {
+    showCopyFallback(recipeMarkdown(recipe), button);
+    setRecipeStatus("Clipboard access is blocked. The recipe text is selected so you can copy it.");
+  }
+});
+async function copyWithTimeout(value) {
+  await Promise.race([
+    navigator.clipboard.writeText(value),
+    new Promise((_, reject) => setTimeout(() => reject(new Error("Clipboard unavailable")), 1200))
+  ]);
+}
+function showCopyFallback(value, button) {
+  priorCopyButton = button;
+  copyDialogText.value = value;
+  copyDialog.showModal();
+  copyDialogText.focus();
+  copyDialogText.select();
+}
+function closeCopyFallback() {
+  copyDialog.close();
+}
+copyDialog.addEventListener("close", () => {
+  priorCopyButton?.focus();
+  priorCopyButton = null;
+});
+document.querySelector("#copy-dialog-close").addEventListener("click", closeCopyFallback);
+copyDialog.addEventListener("click", (event) => {
+  if (event.target === copyDialog) closeCopyFallback();
+});
+async function copySkill() {
+  let skill;
+  try {
+    const response = await fetch("/SKILL.md");
+    if (!response.ok) throw new Error("Skill unavailable");
+    skill = await response.text();
+    await copyWithTimeout(skill);
+    setStatus("Skill copied. Paste it into your agent chat or save it as SKILL.md.", "success");
+    if (recipe) setRecipeStatus("Skill copied. Paste it into your agent chat or save it as SKILL.md.", "success");
+  } catch {
+    if (!skill) {
+      setStatus("The skill could not load. Use the GitHub link to open SKILL.md.", "error");
+      return;
+    }
+    showCopyFallback(skill, document.activeElement);
+    setStatus("Clipboard access is blocked. The complete skill text is selected so you can copy it.");
+    if (recipe) setRecipeStatus("Clipboard access is blocked. The complete skill text is selected so you can copy it.");
+  }
+}
+document.querySelector("#copy-skill").addEventListener("click", copySkill);
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const useCase = useCaseField.value.trim();
+  if (!useCase) {
+    setStatus("Describe what you want to do and the information you already have.", "error");
+    useCaseField.focus();
+    return;
+  }
+  if (busy) return;
+  busy = true;
+  buildButton.disabled = true;
+  buildButton.textContent = "Reading the catalog…";
+  setStatus("Breaking the job into steps and checking the live catalog.");
+  try {
+    const response = await fetch("/api/recipe", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ useCase })
+    });
+    const result = await response.json();
+    if (!response.ok) throw Object.assign(new Error(result.error || "Could not build this recipe."), { status: response.status });
+    recipe = result;
+    render();
+    setStatus(recipe.steps.length ? "Recipe ready. Review and edit each tool before using it." : "Answer the open questions to complete the recipe.", "success");
+    setRecipeStatus("Review and edit each tool before using it.", "success");
+    recipePanel.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
+  } catch (error) {
+      setStatus(error.status === 503 || error.status === 429 ? (error.message || "Recipe generation is temporarily paused. You can edit the example or copy the skill.") :
+      error.status === 400 ? error.message :
+      "The catalog or recipe planner is unavailable. You can still edit the example or copy the skill.", "error");
+  } finally {
+    busy = false;
+    buildButton.disabled = false;
+    buildButton.textContent = "Build a recipe";
+  }
+});
+</script>
+</body>
+</html>

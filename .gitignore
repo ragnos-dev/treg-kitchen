@@ -1,0 +1,8 @@
+node_modules/
+.vercel/
+.env*
+!.env.example
+.DS_Store
+
+/public/SKILL.md
+/public/recipe-format.js

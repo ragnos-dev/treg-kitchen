@@ -1,0 +1,15 @@
+{
+  "name": "treg-kitchen",
+  "version": "0.0.10",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "dev": "node scripts/build.js && node --env-file-if-exists=.env.local scripts/dev.js",
+    "test": "node --test",
+    "build": "node scripts/build.js"
+  }
+}
